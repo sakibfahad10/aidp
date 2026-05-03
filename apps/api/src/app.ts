@@ -2,24 +2,26 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import { clerkMiddleware } from "@clerk/express";
 import { config, validateConfig } from "./config";
 import { errorHandler } from "./middlewares/errorHandler";
 import predictionRoutes from "./routes/predictionRoutes";
+import webhookRoutes from "./routes/webhookRoutes";
 
-// Validate environment on startup
 validateConfig();
 
 const app = express();
 
-// --------------- Middleware ---------------
 app.use(helmet());
 app.use(cors({ origin: config.corsOrigin }));
-app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
-// --------------- Routes ---------------
+// Webhook route BEFORE express.json() — needs raw body for signature verification
+app.use("/api/v1", webhookRoutes);
 
-// Health check
+app.use(express.json({ limit: "1mb" }));
+app.use(clerkMiddleware());
+
 app.get("/health", (_req, res) => {
   res.json({
     success: true,
@@ -31,10 +33,8 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// API v1 routes
 app.use("/api/v1", predictionRoutes);
 
-// 404 fallback
 app.use((_req, res) => {
   res.status(404).json({
     success: false,
@@ -42,10 +42,8 @@ app.use((_req, res) => {
   });
 });
 
-// Global error handler (must be last)
 app.use(errorHandler);
 
-// --------------- Start Server ---------------
 app.listen(config.port, () => {
   console.log(`🚀 API server running on http://localhost:${config.port}`);
   console.log(`📋 Health check: http://localhost:${config.port}/health`);

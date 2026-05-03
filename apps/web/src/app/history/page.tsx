@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import {
   AIPredictionResponse,
   Prediction,
@@ -38,6 +39,7 @@ const inputTypeLabels = {
 };
 
 export default function HistoryPage() {
+  const { getToken } = useAuth();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,8 @@ export default function HistoryPage() {
   useEffect(() => {
     async function fetchPredictions() {
       try {
-        const response = await getPredictions(1, 50);
+        const token = await getToken();
+        const response = await getPredictions(1, 50, token);
         if (response.success && response.data) {
           const data = response.data as PaginatedResponse<Prediction>;
           setPredictions(data.items as Prediction[]);
