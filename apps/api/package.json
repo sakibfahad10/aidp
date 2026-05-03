@@ -6,7 +6,10 @@
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prisma:migrate": "prisma migrate dev --schema=../../packages/db/prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema=../../packages/db/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema=../../packages/db/prisma/schema.prisma"
   },
   "dependencies": {
     "@disease-prediction/db": "workspace:*",
@@ -24,6 +27,7 @@
     "@types/express": "^5.0.0",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.0.0",
+    "prisma": "^6.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"
   }
