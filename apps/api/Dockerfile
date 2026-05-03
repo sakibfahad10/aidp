@@ -50,4 +50,4 @@ COPY --from=build /app/pnpm-workspace.yaml ./
 
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["node", "dist/app.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma && node dist/app.js"]
