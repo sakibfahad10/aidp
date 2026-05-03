@@ -10,7 +10,7 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL || "",
   clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || "",
   clerkSecretKey: process.env.CLERK_SECRET_KEY || "",
-  clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET || "",
+  clerkWebhookSigningSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET || "",
 } as const;
 
 /** Validates that all required environment variables are set */
