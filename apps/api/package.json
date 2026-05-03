@@ -12,6 +12,7 @@
     "prisma:studio": "prisma studio --schema=../../packages/db/prisma/schema.prisma"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.12",
     "@disease-prediction/db": "workspace:*",
     "@disease-prediction/shared": "workspace:*",
     "@google/generative-ai": "^0.24.0",

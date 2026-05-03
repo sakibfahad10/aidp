@@ -10,6 +10,8 @@
     "clean": "rm -rf .next out"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.0",
+    "@clerk/themes": "^2.4.57",
     "@disease-prediction/shared": "workspace:*",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-dialog": "^1.1.1",

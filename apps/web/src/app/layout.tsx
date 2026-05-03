@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import { Navbar } from "@/components/layout/navbar";
 import "./globals.css";
 
@@ -17,8 +19,17 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-background antialiased">
-        <Navbar />
-        <main className="container py-8">{children}</main>
+        <ClerkProvider
+          appearance={{ theme: dark }}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          afterSignOutUrl="/"
+          signInFallbackRedirectUrl="/predict"
+          signUpFallbackRedirectUrl="/predict"
+        >
+          <Navbar />
+          <main className="container py-8">{children}</main>
+        </ClerkProvider>
       </body>
     </html>
   );

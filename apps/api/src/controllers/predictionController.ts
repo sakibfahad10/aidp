@@ -1,18 +1,15 @@
 import { Request, Response, NextFunction } from "express";
+import { getAuth } from "@clerk/express";
 import { PredictionService } from "../services/predictionService";
 
 const predictionService = new PredictionService();
 
-/**
- * Handles prediction-related HTTP requests.
- * Delegates business logic to PredictionService.
- */
 export class PredictionController {
-  /** POST /api/v1/predict — Run a new prediction */
   static async predict(req: Request, res: Response, next: NextFunction) {
     try {
+      const { userId } = getAuth(req);
       const { inputType, payload } = req.body;
-      const prediction = await predictionService.predict(inputType, payload);
+      const prediction = await predictionService.predict(inputType, payload, userId!);
 
       res.status(201).json({
         success: true,
@@ -24,12 +21,12 @@ export class PredictionController {
     }
   }
 
-  /** GET /api/v1/predictions — List all predictions */
   static async getAll(req: Request, res: Response, next: NextFunction) {
     try {
+      const { userId } = getAuth(req);
       const page = parseInt(String(req.query.page || "1"), 10);
       const limit = parseInt(String(req.query.limit || "20"), 10);
-      const result = await predictionService.getAll(page, limit);
+      const result = await predictionService.getAll(page, limit, userId!);
 
       res.json({
         success: true,
@@ -40,10 +37,10 @@ export class PredictionController {
     }
   }
 
-  /** GET /api/v1/predictions/:id — Get a single prediction */
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const prediction = await predictionService.getById(String(req.params.id));
+      const { userId } = getAuth(req);
+      const prediction = await predictionService.getById(String(req.params.id), userId!);
 
       res.json({
         success: true,
