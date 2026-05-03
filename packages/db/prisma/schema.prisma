@@ -44,11 +44,11 @@ model Prediction {
   @@index([createdAt])
   @@index([riskLevel])
   @@index([inputType])
+  @@index([userId])
 }
 
-/// Stubbed user model for future authentication
 model User {
-  id          String       @id @default(uuid())
+  id          String       @id
   email       String       @unique
   name        String?
   predictions Prediction[]

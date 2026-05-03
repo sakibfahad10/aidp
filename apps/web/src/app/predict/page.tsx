@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   InputType,
   AIPredictionResponse,
@@ -22,6 +23,7 @@ import { PredictionResultCard } from "@/components/prediction/result-card";
 import { Stethoscope, ClipboardList, FileText, AlertCircle } from "lucide-react";
 
 export default function PredictPage() {
+  const { getToken } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AIPredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,8 @@ export default function PredictPage() {
     setResult(null);
 
     try {
-      const response = await createPrediction({ inputType, payload });
+      const token = await getToken();
+      const response = await createPrediction({ inputType, payload }, token);
       if (response.success && response.data) {
         // Extract the AI response from the stored prediction
         const aiResult = response.data.result as AIPredictionResponse;

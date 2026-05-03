@@ -2,22 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { Activity, Brain, History } from "lucide-react";
+import { Activity, Brain, History, LogIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const navItems = [
-  { href: "/", label: "Home", icon: Activity },
+const publicNavItems = [{ href: "/", label: "Home", icon: Activity }];
+
+const protectedNavItems = [
   { href: "/predict", label: "Predict", icon: Brain },
   { href: "/history", label: "History", icon: History },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { isSignedIn } = useAuth();
+
+  const navItems = isSignedIn
+    ? [...publicNavItems, ...protectedNavItems]
+    : publicNavItems;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 group-hover:bg-primary/30 transition-colors duration-200">
             <Brain className="h-5 w-5 text-primary" />
@@ -28,7 +35,6 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation */}
         <nav className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -49,6 +55,19 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          <div className="ml-2">
+            {isSignedIn ? (
+              <UserButton />
+            ) : (
+              <SignInButton mode="redirect">
+                <Button size="sm" className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </Button>
+              </SignInButton>
+            )}
+          </div>
         </nav>
       </div>
     </header>

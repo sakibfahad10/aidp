@@ -10,9 +10,6 @@ import {
   RiskLevel as PrismaRiskLevel,
 } from "@disease-prediction/db";
 
-/**
- * Maps shared InputType enum values to Prisma InputType enum values
- */
 function toPrismaInputType(inputType: SharedInputType): PrismaInputType {
   const map: Record<SharedInputType, PrismaInputType> = {
     [SharedInputType.SYMPTOM]: "symptom",
@@ -22,9 +19,6 @@ function toPrismaInputType(inputType: SharedInputType): PrismaInputType {
   return map[inputType];
 }
 
-/**
- * Maps shared RiskLevel enum values to Prisma RiskLevel enum values
- */
 function toPrismaRiskLevel(riskLevel: SharedRiskLevel): PrismaRiskLevel {
   const map: Record<SharedRiskLevel, PrismaRiskLevel> = {
     [SharedRiskLevel.LOW]: "low",
@@ -35,16 +29,12 @@ function toPrismaRiskLevel(riskLevel: SharedRiskLevel): PrismaRiskLevel {
   return map[riskLevel];
 }
 
-/**
- * PredictionRepository handles all database operations for predictions.
- * Keeps Prisma logic isolated from business logic.
- */
 export class PredictionRepository {
-  /** Create a new prediction record */
   async create(
     inputType: SharedInputType,
     inputPayload: PredictionPayload,
-    result: AIPredictionResponse
+    result: AIPredictionResponse,
+    userId: string
   ) {
     return prisma.prediction.create({
       data: {
@@ -53,30 +43,30 @@ export class PredictionRepository {
         result: result as object,
         riskLevel: toPrismaRiskLevel(result.riskLevel),
         summary: result.summary,
+        userId,
       },
     });
   }
 
-  /** Get all predictions ordered by creation date */
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, userId?: string) {
     const skip = (page - 1) * limit;
+    const where = userId ? { userId } : {};
 
     const [items, total] = await Promise.all([
       prisma.prediction.findMany({
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-      prisma.prediction.count(),
+      prisma.prediction.count({ where }),
     ]);
 
     return { items, total, page, limit };
   }
 
-  /** Get a single prediction by ID */
-  async findById(id: string) {
-    return prisma.prediction.findUnique({
-      where: { id },
-    });
+  async findById(id: string, userId?: string) {
+    const where = userId ? { id, userId } : { id };
+    return prisma.prediction.findFirst({ where });
   }
 }

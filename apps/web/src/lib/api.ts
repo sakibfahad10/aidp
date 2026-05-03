@@ -2,18 +2,24 @@ import { ApiResponse, PaginatedResponse, Prediction, PredictRequest } from "@dis
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-/** Generic fetch wrapper with error handling */
 async function fetchApi<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { token?: string | null }
 ): Promise<T> {
+  const { token, ...fetchOptions } = options || {};
   const url = `${API_URL}${endpoint}`;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-    },
-    ...options,
+    headers,
+    ...fetchOptions,
   });
 
   const data = await res.json();
@@ -25,34 +31,35 @@ async function fetchApi<T>(
   return data;
 }
 
-/** Create a new prediction */
 export async function createPrediction(
-  request: PredictRequest
+  request: PredictRequest,
+  token: string | null
 ): Promise<ApiResponse<Prediction>> {
   return fetchApi<ApiResponse<Prediction>>("/api/v1/predict", {
     method: "POST",
     body: JSON.stringify(request),
+    token,
   });
 }
 
-/** Get all predictions */
 export async function getPredictions(
   page = 1,
-  limit = 20
+  limit = 20,
+  token?: string | null
 ): Promise<ApiResponse<PaginatedResponse<Prediction>>> {
   return fetchApi<ApiResponse<PaginatedResponse<Prediction>>>(
-    `/api/v1/predictions?page=${page}&limit=${limit}`
+    `/api/v1/predictions?page=${page}&limit=${limit}`,
+    { token }
   );
 }
 
-/** Get a single prediction by ID */
 export async function getPredictionById(
-  id: string
+  id: string,
+  token?: string | null
 ): Promise<ApiResponse<Prediction>> {
-  return fetchApi<ApiResponse<Prediction>>(`/api/v1/predictions/${id}`);
+  return fetchApi<ApiResponse<Prediction>>(`/api/v1/predictions/${id}`, { token });
 }
 
-/** Check API health */
 export async function checkHealth(): Promise<ApiResponse<{ status: string }>> {
   return fetchApi<ApiResponse<{ status: string }>>("/health");
 }
