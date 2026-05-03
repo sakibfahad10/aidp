@@ -1,0 +1,24 @@
+{
+  "name": "ai-disease-prediction",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered disease prediction platform using Gemini API",
+  "scripts": {
+    "dev": "echo 'Use docker compose up or run apps individually'",
+    "dev:api": "pnpm run build:packages && pnpm --filter @disease-prediction/api dev",
+    "dev:web": "pnpm --filter @disease-prediction/web dev",
+    "build:packages": "pnpm --filter @disease-prediction/shared build && pnpm --filter @disease-prediction/db generate && pnpm --filter @disease-prediction/db build",
+    "build": "pnpm run build:packages && pnpm -r build",
+    "build:api": "pnpm run build:packages && pnpm --filter @disease-prediction/api build",
+    "build:web": "pnpm --filter @disease-prediction/web build",
+    "db:generate": "pnpm --filter @disease-prediction/db generate",
+    "db:push": "pnpm --filter @disease-prediction/db push",
+    "db:migrate": "pnpm --filter @disease-prediction/db migrate",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

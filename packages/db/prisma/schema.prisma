@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------
+// Enums
+// --------------------------------------------------
+
+enum InputType {
+  symptom
+  structured
+  report
+}
+
+enum RiskLevel {
+  low
+  moderate
+  high
+  critical
+}
+
+// --------------------------------------------------
+// Models
+// --------------------------------------------------
+
+/// Stores each AI prediction with its input and response
+model Prediction {
+  id           String    @id @default(uuid())
+  inputType    InputType
+  inputPayload Json      // Raw input payload as JSON
+  result       Json      // AI response stored as JSON
+  riskLevel    RiskLevel
+  summary      String
+  userId       String?   // Stubbed for future auth integration
+  user         User?     @relation(fields: [userId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([riskLevel])
+  @@index([inputType])
+}
+
+/// Stubbed user model for future authentication
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  name        String?
+  predictions Prediction[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
