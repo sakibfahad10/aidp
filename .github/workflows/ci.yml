@@ -24,5 +24,8 @@ jobs:
       - name: Biome (lint + format + imports)
         run: pnpm biome ci .
 
+      - name: Build workspace packages
+        run: pnpm run build:packages
+
       - name: Typecheck
         run: pnpm run typecheck
