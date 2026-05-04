@@ -1,13 +1,13 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { InputType, structuredPayloadSchema } from "@disease-prediction/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { structuredPayloadSchema, InputType } from "@disease-prediction/shared";
-import { z } from "zod";
+import { Loader2, X } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, X } from "lucide-react";
 
 type StructuredFormData = z.infer<typeof structuredPayloadSchema>;
 
@@ -17,9 +17,18 @@ interface StructuredFormProps {
 }
 
 const commonSymptoms = [
-  "Headache", "Fever", "Cough", "Fatigue", "Nausea",
-  "Dizziness", "Chest Pain", "Shortness of Breath", "Joint Pain",
-  "Sore Throat", "Back Pain", "Abdominal Pain",
+  "Headache",
+  "Fever",
+  "Cough",
+  "Fatigue",
+  "Nausea",
+  "Dizziness",
+  "Chest Pain",
+  "Shortness of Breath",
+  "Joint Pain",
+  "Sore Throat",
+  "Back Pain",
+  "Abdominal Pain",
 ];
 
 export function StructuredForm({ onSubmit, isLoading }: StructuredFormProps) {
@@ -64,9 +73,7 @@ export function StructuredForm({ onSubmit, isLoading }: StructuredFormProps) {
             placeholder="e.g., 30"
             {...register("age", { valueAsNumber: true })}
           />
-          {errors.age && (
-            <p className="text-xs text-destructive">{errors.age.message}</p>
-          )}
+          {errors.age && <p className="text-xs text-destructive">{errors.age.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="gender">Gender</Label>
@@ -75,14 +82,20 @@ export function StructuredForm({ onSubmit, isLoading }: StructuredFormProps) {
             className="flex h-10 w-full rounded-lg border border-input bg-white/[0.03] px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-200"
             {...register("gender")}
           >
-            <option value="" className="bg-background">Select gender</option>
-            <option value="male" className="bg-background">Male</option>
-            <option value="female" className="bg-background">Female</option>
-            <option value="other" className="bg-background">Other</option>
+            <option value="" className="bg-background">
+              Select gender
+            </option>
+            <option value="male" className="bg-background">
+              Male
+            </option>
+            <option value="female" className="bg-background">
+              Female
+            </option>
+            <option value="other" className="bg-background">
+              Other
+            </option>
           </select>
-          {errors.gender && (
-            <p className="text-xs text-destructive">{errors.gender.message}</p>
-          )}
+          {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
         </div>
       </div>
 
@@ -109,9 +122,7 @@ export function StructuredForm({ onSubmit, isLoading }: StructuredFormProps) {
             );
           })}
         </div>
-        {errors.symptoms && (
-          <p className="text-xs text-destructive">{errors.symptoms.message}</p>
-        )}
+        {errors.symptoms && <p className="text-xs text-destructive">{errors.symptoms.message}</p>}
       </div>
 
       {/* Vitals */}
