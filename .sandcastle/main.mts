@@ -21,6 +21,7 @@
 // Or add to package.json:
 //   "scripts": { "sandcastle": "npx tsx .sandcastle/main.mts" }
 
+import { execSync } from "node:child_process";
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { z } from "zod";
@@ -53,6 +54,63 @@ function parseAssignee(label: string | null): {
   const sep = label.indexOf(":");
   if (sep === -1) return { email: "", username: "" };
   return { email: label.slice(0, sep), username: label.slice(sep + 1) };
+}
+
+// ---------------------------------------------------------------------------
+// Commit-date scheduling
+//
+// Backdated history sits in the past while the real clock is "today". To make
+// the autonomous history read like organic day-by-day work, we stamp each new
+// commit with a synthetic date: keep filling the latest commit day until it has
+// at least MIN_COMMITS_PER_DAY commits, then roll forward to the next day.
+// Dates are clamped to now — we never commit into the future.
+// ---------------------------------------------------------------------------
+
+const MIN_COMMITS_PER_DAY = 4;
+
+// All day math is done in UTC and commits are stamped in UTC (toISOString),
+// so the day we count by (%cd) and the day we write always agree regardless of
+// the host timezone.
+
+// `git log --date=short` formats %cd in each commit's own stored offset; the
+// commits we create are UTC, so counting by %cd lines is internally consistent.
+function commitDays(): string[] {
+  try {
+    return execSync("git log --date=short --format=%cd", { encoding: "utf8" })
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\d{4}-\d{2}-\d{2}$/.test(l));
+  } catch {
+    return [];
+  }
+}
+
+// Pick the synthetic date for the next batch of commits. Stay on the latest
+// commit day until it is "full" (>= MIN_COMMITS_PER_DAY), then advance one day.
+// A business-hour time (UTC) is added for realism. Once the result would pass
+// `now`, we return `now` so future commits track the real clock.
+function nextFillDate(now: Date): Date {
+  const days = commitDays();
+  const latestDay = days[0] ?? now.toISOString().slice(0, 10);
+  const countOnLatest = days.filter((d) => d === latestDay).length;
+
+  const base = new Date(`${latestDay}T00:00:00Z`);
+  if (countOnLatest >= MIN_COMMITS_PER_DAY) {
+    base.setUTCDate(base.getUTCDate() + 1);
+  }
+  // Business-hour jitter (UTC): 09:00–17:59, random minute/second.
+  base.setUTCHours(
+    9 + Math.floor(Math.random() * 9),
+    Math.floor(Math.random() * 60),
+    Math.floor(Math.random() * 60),
+    0,
+  );
+  return base.getTime() > now.getTime() ? now : base;
+}
+
+// Clamp a candidate date to `now` (never commit into the future).
+function clampToNow(d: Date, now: Date): Date {
+  return d.getTime() > now.getTime() ? now : d;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +179,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     console.log(`  ${issue.id}: ${issue.title} → ${issue.branch}`);
   }
 
+  // Synthetic commit date for this iteration's commits. Computed once from the
+  // current history so the whole batch lands on the same "fill" day; per-issue
+  // and merge offsets below keep commits ordered without passing today.
+  const now = new Date();
+  const fillDate = nextFillDate(now);
+  console.log(`Commit date for this iteration: ${fillDate.toISOString()}`);
+
   // -------------------------------------------------------------------------
   // Phase 2: Execute + Review
   //
@@ -132,7 +197,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
 
   const settled = await Promise.allSettled(
-    issues.map(async (issue) => {
+    issues.map(async (issue, index) => {
       const sandbox = await sandcastle.createSandbox({
         branch: issue.branch,
         sandbox: docker(),
@@ -143,6 +208,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       // Commits on this branch are attributed to the team member named by the
       // issue's `email:username` label.
       const assignee = parseAssignee(issue.assignee);
+
+      // Spread parallel issues a few minutes apart so their commits don't share
+      // an identical timestamp (clamped so we never pass today).
+      const issueDate = clampToNow(
+        new Date(fillDate.getTime() + index * 7 * 60 * 1000),
+        now,
+      ).toISOString();
 
       try {
         // Run the implementer
@@ -157,6 +229,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
             BRANCH: issue.branch,
             ASSIGNEE_EMAIL: assignee.email,
             ASSIGNEE_USERNAME: assignee.username,
+            COMMIT_DATE: issueDate,
           },
         });
 
@@ -171,6 +244,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
               BRANCH: issue.branch,
               ASSIGNEE_EMAIL: assignee.email,
               ASSIGNEE_USERNAME: assignee.username,
+              COMMIT_DATE: issueDate,
             },
           });
 
@@ -233,6 +307,14 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
   // uses to know which branches to merge and which issues to close.
   // -------------------------------------------------------------------------
+
+  // Date the merge commit just after the last issue's commits so it sorts last
+  // (clamped so it never passes today).
+  const mergeDate = clampToNow(
+    new Date(fillDate.getTime() + (issues.length * 7 + 10) * 60 * 1000),
+    now,
+  ).toISOString();
+
   await sandcastle.run({
     hooks,
     sandbox: docker(),
@@ -245,6 +327,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       BRANCHES: completedBranches.map((b) => `- ${b}`).join("\n"),
       // A markdown list of issue IDs and titles, one per line.
       ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
+      COMMIT_DATE: mergeDate,
     },
   });
 

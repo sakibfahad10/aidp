@@ -59,6 +59,14 @@ If you find improvements to make:
 
    Write the commit message as a normal, human-authored message. Do NOT mention Claude, AI, agents, automation, Sandcastle, Ralph, or any other tool or entity. Do NOT add a `Co-Authored-By` trailer or any "Generated with …" line.
 
+   Set the commit date by prefixing the commit command with the date environment variables:
+
+   ```
+   GIT_AUTHOR_DATE="{{COMMIT_DATE}}" GIT_COMMITTER_DATE="{{COMMIT_DATE}}" git commit -m "<message>"
+   ```
+
+   If `{{COMMIT_DATE}}` is empty, commit normally without the date prefix.
+
 If the code is already clean and well-structured, do nothing.
 
 Once complete, output <promise>COMPLETE</promise>.
