@@ -20,7 +20,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "pnpm -r exec tsc --noEmit",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "sandcastle": "npx tsx .sandcastle/main.mts"
   },
   "packageManager": "pnpm@11.5.2",
   "engines": {
@@ -30,5 +31,9 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "lefthook": "^2.1.9"
+  },
+  "dependencies": {
+    "@ai-hero/sandcastle": "^0.7.0",
+    "zod": "^3.25.76"
   }
 }
