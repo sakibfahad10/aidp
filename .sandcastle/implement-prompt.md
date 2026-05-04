@@ -52,13 +52,14 @@ If `{{ASSIGNEE_EMAIL}}` or `{{ASSIGNEE_USERNAME}}` is empty, skip this step and 
 
 Make a git commit. The commit message must:
 
-1. Start with `RALPH:` prefix
-2. Include task completed + PRD reference
-3. Key decisions made
-4. Files changed
-5. Blockers or notes for next iteration
+1. Include task completed + PRD reference
+2. Key decisions made
+3. Files changed
+4. Blockers or notes for next iteration
 
 Keep it concise.
+
+Write it as a normal, human-authored commit message. Do NOT mention Claude, AI, agents, automation, Sandcastle, Ralph, or any other tool or entity. Do NOT add a `Co-Authored-By` trailer or any "Generated with …" line.
 
 # THE ISSUE
 

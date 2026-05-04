@@ -11,7 +11,7 @@ For each branch:
 3. After resolving conflicts, run `npm run typecheck` and `npm run test` to verify everything works
 4. If tests fail, fix the issues before proceeding to the next branch
 
-After all branches are merged, make a single commit summarizing the merge.
+After all branches are merged, make a single commit summarizing the merge. Write the commit message as a normal, human-authored message. Do NOT mention Claude, AI, agents, automation, Sandcastle, Ralph, or any other tool or entity. Do NOT add a `Co-Authored-By` trailer or any "Generated with …" line.
 
 # CLOSE ISSUES
 

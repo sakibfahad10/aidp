@@ -57,6 +57,8 @@ If you find improvements to make:
 
    If `{{ASSIGNEE_EMAIL}}` or `{{ASSIGNEE_USERNAME}}` is empty, skip the config step and keep the default git identity.
 
+   Write the commit message as a normal, human-authored message. Do NOT mention Claude, AI, agents, automation, Sandcastle, Ralph, or any other tool or entity. Do NOT add a `Co-Authored-By` trailer or any "Generated with …" line.
+
 If the code is already clean and well-structured, do nothing.
 
 Once complete, output <promise>COMPLETE</promise>.
