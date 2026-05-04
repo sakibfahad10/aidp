@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
 /** Custom application error with HTTP status code */
 export class AppError extends Error {
   constructor(
     public statusCode: number,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "AppError";
@@ -13,12 +13,7 @@ export class AppError extends Error {
 }
 
 /** Global error handling middleware */
-export function errorHandler(
-  err: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
+export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   // Zod validation errors
   if (err instanceof ZodError) {
     res.status(400).json({

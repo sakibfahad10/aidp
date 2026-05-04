@@ -1,11 +1,11 @@
 "use client";
 
+import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
+import { Activity, Brain, History, LogIn } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { cn } from "@/lib/utils";
-import { Activity, Brain, History, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const publicNavItems = [{ href: "/", label: "Home", icon: Activity }];
 
@@ -18,9 +18,7 @@ export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
 
-  const navItems = isSignedIn
-    ? [...publicNavItems, ...protectedNavItems]
-    : publicNavItems;
+  const navItems = isSignedIn ? [...publicNavItems, ...protectedNavItems] : publicNavItems;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -47,7 +45,7 @@ export function Navbar() {
                   "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
                 )}
               >
                 <Icon className="h-4 w-4" />

@@ -1,14 +1,14 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { InputType, symptomPayloadSchema } from "@disease-prediction/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { symptomPayloadSchema, InputType } from "@disease-prediction/shared";
-import { z } from "zod";
+import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 type SymptomFormData = z.infer<typeof symptomPayloadSchema>;
 
@@ -40,27 +40,17 @@ export function SymptomForm({ onSubmit, isLoading }: SymptomFormProps) {
           className="min-h-[140px]"
           {...register("symptoms")}
         />
-        {errors.symptoms && (
-          <p className="text-xs text-destructive">{errors.symptoms.message}</p>
-        )}
+        {errors.symptoms && <p className="text-xs text-destructive">{errors.symptoms.message}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="duration">Duration (optional)</Label>
-          <Input
-            id="duration"
-            placeholder="e.g., 3 days"
-            {...register("duration")}
-          />
+          <Input id="duration" placeholder="e.g., 3 days" {...register("duration")} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="severity">Severity (optional)</Label>
-          <Input
-            id="severity"
-            placeholder="e.g., moderate"
-            {...register("severity")}
-          />
+          <Input id="severity" placeholder="e.g., moderate" {...register("severity")} />
         </div>
       </div>
 

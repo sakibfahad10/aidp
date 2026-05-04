@@ -1,8 +1,8 @@
-import express from "express";
+import { clerkMiddleware } from "@clerk/express";
 import cors from "cors";
+import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import { clerkMiddleware } from "@clerk/express";
 import { config, validateConfig } from "./config";
 import { errorHandler } from "./middlewares/errorHandler";
 import predictionRoutes from "./routes/predictionRoutes";
