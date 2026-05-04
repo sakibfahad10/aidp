@@ -1,29 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import {
+import type {
   AIPredictionResponse,
-  Prediction,
   PaginatedResponse,
+  Prediction,
 } from "@disease-prediction/shared";
-import { getPredictions } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AlertCircle, ChevronRight, History, Inbox, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  History,
-  AlertCircle,
-  ChevronRight,
-  Loader2,
-  Inbox,
-} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { getPredictions } from "@/lib/api";
 
 const riskBadgeVariant = {
   low: "low" as const,
@@ -37,6 +26,8 @@ const inputTypeLabels = {
   structured: "Structured",
   report: "Report",
 };
+
+type LegacyPredictionFields = Partial<Pick<AIPredictionResponse, "riskLevel" | "summary">>;
 
 export default function HistoryPage() {
   const { getToken } = useAuth();
@@ -56,16 +47,14 @@ export default function HistoryPage() {
           setTotal(data.total);
         }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load predictions"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load predictions");
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchPredictions();
-  }, []);
+  }, [getToken]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -84,9 +73,7 @@ export default function HistoryPage() {
         <h1 className="text-3xl font-bold mb-2">
           Prediction <span className="gradient-text">History</span>
         </h1>
-        <p className="text-muted-foreground">
-          Review your past AI health predictions
-        </p>
+        <p className="text-muted-foreground">Review your past AI health predictions</p>
       </div>
 
       {/* Loading State */}
@@ -118,8 +105,7 @@ export default function HistoryPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">No predictions yet</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-              Start by making your first health prediction using our AI-powered
-              analysis tool.
+              Start by making your first health prediction using our AI-powered analysis tool.
             </p>
             <Link href="/predict">
               <Button>Make Your First Prediction</Button>
@@ -141,7 +127,8 @@ export default function HistoryPage() {
           <div className="space-y-3">
             {predictions.map((prediction, index) => {
               const result = prediction.result as AIPredictionResponse;
-              const riskLevel = result?.riskLevel || (prediction as any).riskLevel || "low";
+              const riskLevel =
+                result?.riskLevel || (prediction as LegacyPredictionFields).riskLevel || "low";
 
               return (
                 <Card
@@ -152,7 +139,9 @@ export default function HistoryPage() {
                   <CardContent className="p-4 flex items-center gap-4">
                     {/* Risk Badge */}
                     <Badge
-                      variant={riskBadgeVariant[riskLevel as keyof typeof riskBadgeVariant] || "default"}
+                      variant={
+                        riskBadgeVariant[riskLevel as keyof typeof riskBadgeVariant] || "default"
+                      }
                       className="flex-shrink-0"
                     >
                       {riskLevel}
@@ -162,14 +151,17 @@ export default function HistoryPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-primary font-medium uppercase tracking-wider">
-                          {inputTypeLabels[(prediction as any).inputType as keyof typeof inputTypeLabels] || "Unknown"}
+                          {inputTypeLabels[prediction.inputType as keyof typeof inputTypeLabels] ||
+                            "Unknown"}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(prediction.createdAt)}
                         </span>
                       </div>
                       <p className="text-sm text-foreground truncate">
-                        {result?.summary || (prediction as any).summary || "Prediction result"}
+                        {result?.summary ||
+                          (prediction as LegacyPredictionFields).summary ||
+                          "Prediction result"}
                       </p>
                     </div>
 

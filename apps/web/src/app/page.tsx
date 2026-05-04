@@ -1,16 +1,16 @@
+import {
+  ArrowRight,
+  Brain,
+  ClipboardList,
+  Database,
+  FileText,
+  Shield,
+  Stethoscope,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Brain,
-  Stethoscope,
-  FileText,
-  ClipboardList,
-  ArrowRight,
-  Shield,
-  Zap,
-  Database,
-} from "lucide-react";
 
 const features = [
   {
@@ -75,15 +75,14 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            Smart Health{" "}
-            <span className="gradient-text">Predictions</span>
+            Smart Health <span className="gradient-text">Predictions</span>
             <br />
             Powered by AI
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Get instant health insights by describing symptoms, inputting health data,
-            or analyzing medical reports. Powered by Google Gemini AI.
+            Get instant health insights by describing symptoms, inputting health data, or analyzing
+            medical reports. Powered by Google Gemini AI.
           </p>
 
           <div className="flex items-center justify-center gap-4">
@@ -113,10 +112,7 @@ export default function HomePage() {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <Card
-                key={feature.title}
-                className="group glass-hover cursor-pointer"
-              >
+              <Card key={feature.title} className="group glass-hover cursor-pointer">
                 <CardContent className="p-6 flex flex-col items-center text-center">
                   <div
                     className={`flex h-14 w-14 items-center justify-center rounded-2xl ${feature.bg} mb-4 group-hover:scale-110 transition-transform duration-300`}
@@ -145,9 +141,7 @@ export default function HomePage() {
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <h4 className="text-sm font-medium">{item.title}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {item.description}
-                </p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
               </div>
             );
           })}

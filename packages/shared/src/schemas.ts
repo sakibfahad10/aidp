@@ -15,9 +15,7 @@ export const symptomPayloadSchema = z.object({
 export const structuredPayloadSchema = z.object({
   age: z.number().min(0).max(150, "Please enter a valid age"),
   gender: z.string().min(1, "Gender is required"),
-  symptoms: z
-    .array(z.string())
-    .min(1, "Please select at least one symptom"),
+  symptoms: z.array(z.string()).min(1, "Please select at least one symptom"),
   medicalHistory: z.array(z.string()).optional(),
   currentMedications: z.array(z.string()).optional(),
   vitals: z
@@ -64,7 +62,7 @@ export const aiPredictionResponseSchema = z.object({
       name: z.string(),
       probability: z.string(),
       description: z.string(),
-    })
+    }),
   ),
   summary: z.string(),
   recommendation: z.string(),

@@ -1,18 +1,7 @@
-import { AIPredictionResponse, RiskLevel } from "@disease-prediction/shared";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { type AIPredictionResponse, RiskLevel } from "@disease-prediction/shared";
+import { AlertTriangle, CheckCircle2, FileWarning, Shield, Stethoscope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Shield,
-  Stethoscope,
-  FileWarning,
-} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface PredictionResultCardProps {
   result: AIPredictionResponse;
@@ -45,15 +34,11 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
               <RiskIcon className="h-5 w-5" />
               Prediction Result
             </CardTitle>
-            <Badge variant={riskBadgeVariant[result.riskLevel]}>
-              {result.riskLevel} risk
-            </Badge>
+            <Badge variant={riskBadgeVariant[result.riskLevel]}>{result.riskLevel} risk</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {result.summary}
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{result.summary}</p>
         </CardContent>
       </Card>
 
@@ -69,7 +54,7 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
           <div className="space-y-3">
             {result.possibleConditions.map((condition, index) => (
               <div
-                key={index}
+                key={condition.name}
                 className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors duration-200"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -77,12 +62,8 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
                   {condition.probability}
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-foreground">
-                    {condition.name}
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {condition.description}
-                  </p>
+                  <h4 className="text-sm font-medium text-foreground">{condition.name}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{condition.description}</p>
                 </div>
               </div>
             ))}
@@ -99,9 +80,7 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {result.recommendation}
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{result.recommendation}</p>
         </CardContent>
       </Card>
 
@@ -116,11 +95,8 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {result.redFlags.map((flag, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-2 text-sm text-muted-foreground"
-                >
+              {result.redFlags.map((flag) => (
+                <li key={flag} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-destructive flex-shrink-0" />
                   {flag}
                 </li>
@@ -133,8 +109,8 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
       {/* Disclaimer */}
       <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
         <p className="text-xs text-amber-400/80 text-center">
-          ⚠️ This is an AI-generated analysis for informational purposes only.
-          Always consult a qualified healthcare professional for medical advice.
+          ⚠️ This is an AI-generated analysis for informational purposes only. Always consult a
+          qualified healthcare professional for medical advice.
         </p>
       </div>
     </div>

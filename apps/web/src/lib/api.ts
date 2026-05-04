@@ -1,10 +1,15 @@
-import { ApiResponse, PaginatedResponse, Prediction, PredictRequest } from "@disease-prediction/shared";
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  Prediction,
+  PredictRequest,
+} from "@disease-prediction/shared";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 async function fetchApi<T>(
   endpoint: string,
-  options?: RequestInit & { token?: string | null }
+  options?: RequestInit & { token?: string | null },
 ): Promise<T> {
   const { token, ...fetchOptions } = options || {};
   const url = `${API_URL}${endpoint}`;
@@ -14,7 +19,7 @@ async function fetchApi<T>(
   };
 
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(url, {
@@ -33,7 +38,7 @@ async function fetchApi<T>(
 
 export async function createPrediction(
   request: PredictRequest,
-  token: string | null
+  token: string | null,
 ): Promise<ApiResponse<Prediction>> {
   return fetchApi<ApiResponse<Prediction>>("/api/v1/predict", {
     method: "POST",
@@ -45,17 +50,17 @@ export async function createPrediction(
 export async function getPredictions(
   page = 1,
   limit = 20,
-  token?: string | null
+  token?: string | null,
 ): Promise<ApiResponse<PaginatedResponse<Prediction>>> {
   return fetchApi<ApiResponse<PaginatedResponse<Prediction>>>(
     `/api/v1/predictions?page=${page}&limit=${limit}`,
-    { token }
+    { token },
   );
 }
 
 export async function getPredictionById(
   id: string,
-  token?: string | null
+  token?: string | null,
 ): Promise<ApiResponse<Prediction>> {
   return fetchApi<ApiResponse<Prediction>>(`/api/v1/predictions/${id}`, { token });
 }

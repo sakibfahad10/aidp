@@ -1,11 +1,11 @@
-import {
+import type {
+  AIPredictionResponse,
   InputType,
   PredictionPayload,
-  AIPredictionResponse,
 } from "@disease-prediction/shared";
-import { GeminiService } from "./geminiService";
-import { PredictionRepository } from "../repositories/predictionRepository";
 import { AppError } from "../middlewares/errorHandler";
+import { PredictionRepository } from "../repositories/predictionRepository";
+import { GeminiService } from "./geminiService";
 
 export class PredictionService {
   private geminiService: GeminiService;
@@ -17,17 +17,9 @@ export class PredictionService {
   }
 
   async predict(inputType: InputType, payload: PredictionPayload, userId: string) {
-    const aiResult: AIPredictionResponse = await this.geminiService.predict(
-      inputType,
-      payload
-    );
+    const aiResult: AIPredictionResponse = await this.geminiService.predict(inputType, payload);
 
-    const prediction = await this.predictionRepo.create(
-      inputType,
-      payload,
-      aiResult,
-      userId
-    );
+    const prediction = await this.predictionRepo.create(inputType, payload, aiResult, userId);
 
     return prediction;
   }

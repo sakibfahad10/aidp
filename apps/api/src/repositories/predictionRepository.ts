@@ -1,14 +1,14 @@
-import { prisma } from "@disease-prediction/db";
 import {
+  type InputType as PrismaInputType,
+  type RiskLevel as PrismaRiskLevel,
+  prisma,
+} from "@disease-prediction/db";
+import {
+  type AIPredictionResponse,
+  type PredictionPayload,
   InputType as SharedInputType,
   RiskLevel as SharedRiskLevel,
-  AIPredictionResponse,
-  PredictionPayload,
 } from "@disease-prediction/shared";
-import {
-  InputType as PrismaInputType,
-  RiskLevel as PrismaRiskLevel,
-} from "@disease-prediction/db";
 
 function toPrismaInputType(inputType: SharedInputType): PrismaInputType {
   const map: Record<SharedInputType, PrismaInputType> = {
@@ -34,7 +34,7 @@ export class PredictionRepository {
     inputType: SharedInputType,
     inputPayload: PredictionPayload,
     result: AIPredictionResponse,
-    userId: string
+    userId: string,
   ) {
     return prisma.prediction.create({
       data: {
