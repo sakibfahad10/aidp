@@ -1,14 +1,14 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { InputType, reportPayloadSchema } from "@disease-prediction/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { reportPayloadSchema, InputType } from "@disease-prediction/shared";
-import { z } from "zod";
+import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 type ReportFormData = z.infer<typeof reportPayloadSchema>;
 
@@ -50,9 +50,7 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
           {...register("reportText")}
         />
         {errors.reportText && (
-          <p className="text-xs text-destructive">
-            {errors.reportText.message}
-          </p>
+          <p className="text-xs text-destructive">{errors.reportText.message}</p>
         )}
       </div>
 

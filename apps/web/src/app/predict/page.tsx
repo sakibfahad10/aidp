@@ -1,26 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import {
-  InputType,
+import type {
   AIPredictionResponse,
+  InputType,
   PredictionPayload,
 } from "@disease-prediction/shared";
-import { createPrediction } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SymptomForm } from "@/components/prediction/symptom-form";
-import { StructuredForm } from "@/components/prediction/structured-form";
+import { AlertCircle, ClipboardList, FileText, Stethoscope } from "lucide-react";
+import { useState } from "react";
 import { ReportForm } from "@/components/prediction/report-form";
 import { PredictionResultCard } from "@/components/prediction/result-card";
-import { Stethoscope, ClipboardList, FileText, AlertCircle } from "lucide-react";
+import { StructuredForm } from "@/components/prediction/structured-form";
+import { SymptomForm } from "@/components/prediction/symptom-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createPrediction } from "@/lib/api";
 
 export default function PredictPage() {
   const { getToken } = useAuth();

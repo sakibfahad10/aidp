@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
-  InputType,
-  AIPredictionResponse,
-  PredictionPayload,
+  type AIPredictionResponse,
   aiPredictionResponseSchema,
+  InputType,
+  type PredictionPayload,
 } from "@disease-prediction/shared";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 import { AppError } from "../middlewares/errorHandler";
 
@@ -104,17 +104,11 @@ export class GeminiService {
   /**
    * Sends a prediction request to Gemini and returns a validated response
    */
-  async predict(
-    inputType: InputType,
-    payload: PredictionPayload
-  ): Promise<AIPredictionResponse> {
+  async predict(inputType: InputType, payload: PredictionPayload): Promise<AIPredictionResponse> {
     const userPrompt = buildUserPrompt(inputType, payload);
 
     try {
-      const result = await this.model.generateContent([
-        SYSTEM_PROMPT,
-        userPrompt,
-      ]);
+      const result = await this.model.generateContent([SYSTEM_PROMPT, userPrompt]);
 
       const responseText = result.response.text();
 
