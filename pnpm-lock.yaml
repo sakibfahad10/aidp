@@ -21,6 +21,9 @@ importers:
       lefthook:
         specifier: ^2.1.9
         version: 2.1.9
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
 
   apps/api:
     dependencies:
