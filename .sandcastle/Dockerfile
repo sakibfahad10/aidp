@@ -15,8 +15,9 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   && apt-get update && apt-get install -y gh \
   && rm -rf /var/lib/apt/lists/*
 
-# Enable pnpm (matches the repo's packageManager field)
-RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+# Install pnpm globally (matches the repo's packageManager field).
+# npm -g puts pnpm at /usr/local/bin/pnpm — on PATH for the agent user, no runtime download.
+RUN npm install -g pnpm@11.5.2
 
 # Build-args for UID/GID alignment: sandcastle docker build-image
 # defaults these to the host user's UID/GID so image-built files
