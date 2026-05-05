@@ -122,9 +122,16 @@ function clampToNow(d: Date, now: Date): Date {
 const MAX_ITERATIONS = 10;
 
 // Hooks run inside the sandbox before the agent starts each iteration.
-// npm install ensures the sandbox always has fresh dependencies.
+// pnpm install ensures the sandbox always has fresh dependencies. This is a
+// pnpm-only workspace (workspace:* deps), so npm cannot be used here. The
+// timeout is raised well above the 60s default because the first install
+// rebuilds native binaries (prisma, esbuild, sharp) for the Linux sandbox.
 const hooks = {
-  sandbox: { onSandboxReady: [{ command: "npm install" }] },
+  sandbox: {
+    onSandboxReady: [
+      { command: "pnpm install --frozen-lockfile", timeoutMs: 600_000 },
+    ],
+  },
 };
 
 // Copy node_modules from the host into the worktree before each sandbox
