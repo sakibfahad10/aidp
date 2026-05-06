@@ -3,8 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "module": "CommonJS",
-    "moduleResolution": "node",
-    "types": ["vitest/globals"]
+    "moduleResolution": "node"
   },
   "include": ["src", "vitest.config.ts"]
 }
