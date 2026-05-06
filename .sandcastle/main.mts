@@ -134,10 +134,11 @@ const hooks = {
   },
 };
 
-// Copy node_modules from the host into the worktree before each sandbox
-// starts. Avoids a full npm install from scratch; the hook above handles
-// platform-specific binaries and any packages added since the last copy.
-const copyToWorktree = ["node_modules"];
+// All sandboxes run pnpm non-interactively. CI=true lets pnpm purge and
+// recreate an incompatible (host-platform) node_modules without a TTY prompt —
+// otherwise it aborts with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY. Safe:
+// each sandbox is an isolated git worktree, never the live repo.
+const sandboxProvider = () => docker({ env: { CI: "true" } });
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -157,7 +158,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   const plan = await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: sandboxProvider(),
     name: "planner",
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
@@ -207,9 +208,8 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     issues.map(async (issue, index) => {
       const sandbox = await sandcastle.createSandbox({
         branch: issue.branch,
-        sandbox: docker(),
+        sandbox: sandboxProvider(),
         hooks,
-        copyToWorktree,
       });
 
       // Commits on this branch are attributed to the team member named by the
@@ -324,7 +324,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
 
   await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: sandboxProvider(),
     name: "merger",
     maxIterations: 1,
     agent: sandcastle.claudeCode("claude-opus-4-7"),
