@@ -20,6 +20,7 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "pnpm -r exec tsc --noEmit",
+    "test": "pnpm -r --if-present test",
     "clean": "pnpm -r clean",
     "sandcastle": "tsx .sandcastle/main.mts",
     "sandcastle:build-image": "sandcastle docker build-image"

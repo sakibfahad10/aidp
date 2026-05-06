@@ -1,3 +1,5 @@
+import type { ReportFileMetadata } from "./report-file";
+
 /** Supported input types for disease prediction */
 export enum InputType {
   SYMPTOM = "symptom",
@@ -43,7 +45,11 @@ export interface ReportPayload {
 }
 
 /** Union type for all input payloads */
-export type PredictionPayload = SymptomPayload | StructuredPayload | ReportPayload;
+export type PredictionPayload =
+  | SymptomPayload
+  | StructuredPayload
+  | ReportPayload
+  | ReportFileMetadata;
 
 /** Request body sent to the predict endpoint */
 export interface PredictRequest {
