@@ -45,7 +45,7 @@ export class PredictionService {
     );
 
     const metadata: ReportFileMetadata = {
-      ...(reportType ? { reportType } : {}),
+      reportType,
       fileName: file.fileName,
       mimeType: file.mimeType,
       fileSizeBytes: file.fileSizeBytes,

@@ -31,13 +31,14 @@ describe("parseAiResponse", () => {
   });
 
   it("throws an AppError(502) when no JSON object is present", () => {
-    expect(() => parseAiResponse("no json here, just prose")).toThrow(AppError);
+    let caught: unknown;
     try {
       parseAiResponse("no json here, just prose");
     } catch (err) {
-      expect(err).toBeInstanceOf(AppError);
-      expect((err as AppError).statusCode).toBe(502);
+      caught = err;
     }
+    expect(caught).toBeInstanceOf(AppError);
+    expect((caught as AppError).statusCode).toBe(502);
   });
 
   it("throws when the embedded JSON fails aiPredictionResponseSchema", () => {

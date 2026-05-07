@@ -42,11 +42,9 @@ export class PredictionController {
         throw new AppError(415, "Unsupported file type");
       }
 
-      const reportTypeRaw = req.body?.reportType;
+      const rawReportType = req.body?.reportType;
       const reportType =
-        typeof reportTypeRaw === "string" && reportTypeRaw.trim().length > 0
-          ? reportTypeRaw.trim()
-          : undefined;
+        typeof rawReportType === "string" ? rawReportType.trim() || undefined : undefined;
 
       const prediction = await predictionService.predictFromReportFile(
         {
