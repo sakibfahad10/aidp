@@ -1,5 +1,7 @@
 import { getAuth } from "@clerk/express";
+import { type AllowedReportFileMimeType, isAllowedReportFile } from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
+import { AppError } from "../middlewares/errorHandler";
 import { PredictionService } from "../services/predictionService";
 
 const predictionService = new PredictionService();
@@ -14,6 +16,48 @@ export class PredictionController {
       }
       const { inputType, payload } = req.body;
       const prediction = await predictionService.predict(inputType, payload, userId);
+
+      res.status(201).json({
+        success: true,
+        data: prediction,
+        message: "Prediction created successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async predictReportFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const file = req.file;
+      if (!file) {
+        throw new AppError(400, "File is required");
+      }
+      if (!isAllowedReportFile(file.mimetype, file.size)) {
+        throw new AppError(415, "Unsupported file type");
+      }
+
+      const reportTypeRaw = req.body?.reportType;
+      const reportType =
+        typeof reportTypeRaw === "string" && reportTypeRaw.trim().length > 0
+          ? reportTypeRaw.trim()
+          : undefined;
+
+      const prediction = await predictionService.predictFromReportFile(
+        {
+          buffer: file.buffer,
+          mimeType: file.mimetype as AllowedReportFileMimeType,
+          fileName: file.originalname,
+          fileSizeBytes: file.size,
+        },
+        reportType,
+        userId,
+      );
 
       res.status(201).json({
         success: true,

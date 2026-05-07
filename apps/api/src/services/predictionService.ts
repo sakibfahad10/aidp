@@ -1,11 +1,20 @@
-import type {
-  AIPredictionResponse,
+import {
+  type AIPredictionResponse,
+  type AllowedReportFileMimeType,
   InputType,
-  PredictionPayload,
+  type PredictionPayload,
+  type ReportFileMetadata,
 } from "@disease-prediction/shared";
 import { AppError } from "../middlewares/errorHandler";
 import { PredictionRepository } from "../repositories/predictionRepository";
 import { GeminiService } from "./geminiService";
+
+export interface ReportFileInput {
+  buffer: Buffer;
+  mimeType: AllowedReportFileMimeType;
+  fileName: string;
+  fileSizeBytes: number;
+}
 
 export class PredictionService {
   private geminiService: GeminiService;
@@ -22,6 +31,27 @@ export class PredictionService {
     const prediction = await this.predictionRepo.create(inputType, payload, aiResult, userId);
 
     return prediction;
+  }
+
+  async predictFromReportFile(
+    file: ReportFileInput,
+    reportType: string | undefined,
+    userId: string,
+  ) {
+    const aiResult = await this.geminiService.predictFromReportFile(
+      file.buffer,
+      file.mimeType,
+      reportType,
+    );
+
+    const metadata: ReportFileMetadata = {
+      ...(reportType ? { reportType } : {}),
+      fileName: file.fileName,
+      mimeType: file.mimeType,
+      fileSizeBytes: file.fileSizeBytes,
+    };
+
+    return this.predictionRepo.create(InputType.REPORT, metadata, aiResult, userId);
   }
 
   async getAll(page?: number, limit?: number, userId?: string) {

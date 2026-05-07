@@ -1,12 +1,13 @@
 import {
   type AIPredictionResponse,
-  aiPredictionResponseSchema,
+  type AllowedReportFileMimeType,
   InputType,
   type PredictionPayload,
 } from "@disease-prediction/shared";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 import { AppError } from "../middlewares/errorHandler";
+import { parseAiResponse } from "./parseAiResponse";
 
 const SYSTEM_PROMPT = `You are an AI medical assistant. Analyze the provided health information and return a JSON prediction.
 
@@ -35,6 +36,8 @@ Guidelines:
 - Always recommend consulting a healthcare professional
 
 DISCLAIMER: This is an AI-based analysis for informational purposes only and should not replace professional medical advice.`;
+
+const REPORT_FILE_INSTRUCTION = `The attached document is a medical report (PDF, JPEG, or PNG). Read it directly — including any text, tables, lab values, or images — and analyze it for the patient's risk.`;
 
 /**
  * Builds a human-readable prompt from the input type and payload
@@ -109,20 +112,40 @@ export class GeminiService {
 
     try {
       const result = await this.model.generateContent([SYSTEM_PROMPT, userPrompt]);
+      return parseAiResponse(result.response.text());
+    } catch (error) {
+      if (error instanceof AppError) throw error;
 
-      const responseText = result.response.text();
+      console.error("Gemini API error:", error);
+      throw new AppError(502, "Failed to get prediction from AI service");
+    }
+  }
 
-      // Extract JSON from the response (handles possible markdown wrapping)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new AppError(502, "AI returned an invalid response format");
-      }
+  /**
+   * Sends a report file (PDF or image) directly to the multimodal model
+   * as inlineData and returns a validated response.
+   */
+  async predictFromReportFile(
+    buffer: Buffer,
+    mimeType: AllowedReportFileMimeType,
+    reportType?: string,
+  ): Promise<AIPredictionResponse> {
+    const instruction = reportType
+      ? `${REPORT_FILE_INSTRUCTION}\nReport Type: ${reportType}`
+      : REPORT_FILE_INSTRUCTION;
 
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      // Validate against our expected schema
-      const validated = aiPredictionResponseSchema.parse(parsed);
-      return validated;
+    try {
+      const result = await this.model.generateContent([
+        SYSTEM_PROMPT,
+        instruction,
+        {
+          inlineData: {
+            data: buffer.toString("base64"),
+            mimeType,
+          },
+        },
+      ]);
+      return parseAiResponse(result.response.text());
     } catch (error) {
       if (error instanceof AppError) throw error;
 
