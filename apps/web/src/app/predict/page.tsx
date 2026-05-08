@@ -44,6 +44,11 @@ export default function PredictPage() {
     }
   };
 
+  const handleReportFileSubmit = (_file: File, _reportType?: string) => {
+    setResult(null);
+    setError("Report file upload is not yet enabled. Please paste the report text for now.");
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Page Header */}
@@ -90,7 +95,11 @@ export default function PredictPage() {
             </TabsContent>
 
             <TabsContent value="report">
-              <ReportForm onSubmit={handleSubmit} isLoading={isLoading} />
+              <ReportForm
+                onSubmit={handleSubmit}
+                onSubmitFile={handleReportFileSubmit}
+                isLoading={isLoading}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
