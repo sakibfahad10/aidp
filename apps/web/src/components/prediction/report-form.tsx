@@ -9,7 +9,7 @@ import {
 } from "@disease-prediction/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Upload } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,10 @@ interface ReportFormProps {
 const ACCEPT_ATTR = ALLOWED_REPORT_FILE_MIME_TYPES.join(",");
 const MAX_MB = Math.round(MAX_REPORT_FILE_SIZE_BYTES / (1024 * 1024));
 
+function isAllowedMimeType(mimeType: string): boolean {
+  return (ALLOWED_REPORT_FILE_MIME_TYPES as readonly string[]).includes(mimeType);
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -42,7 +46,6 @@ export function ReportForm({ onSubmit, onSubmitFile, isLoading }: ReportFormProp
   const [reportType, setReportType] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const reportTypeId = useId();
   const fileInputId = useId();
 
@@ -65,14 +68,14 @@ export function ReportForm({ onSubmit, onSubmitFile, isLoading }: ReportFormProp
       setFileError(null);
       return;
     }
-    if (!isAllowedReportFile(picked.type, picked.size)) {
-      const allowed = (ALLOWED_REPORT_FILE_MIME_TYPES as readonly string[]).includes(picked.type);
+    if (!isAllowedMimeType(picked.type)) {
       setFile(null);
-      setFileError(
-        !allowed
-          ? "Unsupported file type. Please upload a PDF, JPEG, or PNG."
-          : `File is too large. Maximum size is ${MAX_MB} MB.`,
-      );
+      setFileError("Unsupported file type. Please upload a PDF, JPEG, or PNG.");
+      return;
+    }
+    if (picked.size > MAX_REPORT_FILE_SIZE_BYTES) {
+      setFile(null);
+      setFileError(`File is too large. Maximum size is ${MAX_MB} MB.`);
       return;
     }
     setFile(picked);
@@ -150,7 +153,6 @@ export function ReportForm({ onSubmit, onSubmitFile, isLoading }: ReportFormProp
           <div className="space-y-2">
             <Label htmlFor={fileInputId}>Medical Report File</Label>
             <input
-              ref={fileInputRef}
               id={fileInputId}
               type="file"
               accept={ACCEPT_ATTR}
