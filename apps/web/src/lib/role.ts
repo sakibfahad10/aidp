@@ -1,12 +1,10 @@
-import { Role } from "@disease-prediction/shared";
+import type { Role } from "@disease-prediction/shared";
 
 /**
- * Primary landing path for a role. `null` means "no role yet" and routes to
- * the role gate. The doctor dashboard does not exist yet; doctors share the
- * predict landing for now (later slices under PRD #9 will own /doctor).
+ * Primary landing path for a role. `null`/`undefined` means "no role yet" and
+ * routes to the role gate. Doctors share `/predict` with patients for now;
+ * later slices under PRD #9 will own `/doctor`.
  */
 export function landingPathForRole(role: Role | null | undefined): string {
-  if (role === Role.DOCTOR) return "/predict";
-  if (role === Role.PATIENT) return "/predict";
-  return "/role-gate";
+  return role ? "/predict" : "/role-gate";
 }

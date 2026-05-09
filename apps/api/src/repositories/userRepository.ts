@@ -1,13 +1,8 @@
 import { type Role as PrismaRole, prisma } from "@disease-prediction/db";
 import type { Role } from "@disease-prediction/shared";
 
-function toPrismaRole(role: Role): PrismaRole {
-  return role as PrismaRole;
-}
-
-function fromPrismaRole(role: PrismaRole | null): Role | null {
-  return role === null ? null : (role as Role);
-}
+// Shared `Role` and Prisma `Role` are distinct types but share identical string
+// values, so a direct cast at the boundary is sound.
 
 export class UserRepository {
   async findById(id: string) {
@@ -19,14 +14,13 @@ export class UserRepository {
       where: { id },
       select: { role: true },
     });
-    if (!user) return null;
-    return fromPrismaRole(user.role);
+    return (user?.role ?? null) as Role | null;
   }
 
   async setRole(id: string, role: Role) {
     return prisma.user.update({
       where: { id },
-      data: { role: toPrismaRole(role) },
+      data: { role: role as PrismaRole },
     });
   }
 }
