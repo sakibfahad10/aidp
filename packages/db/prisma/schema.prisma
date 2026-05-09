@@ -24,6 +24,11 @@ enum RiskLevel {
   critical
 }
 
+enum Role {
+  PATIENT
+  DOCTOR
+}
+
 // --------------------------------------------------
 // Models
 // --------------------------------------------------
@@ -51,6 +56,10 @@ model User {
   id          String       @id
   email       String       @unique
   name        String?
+  /// Nullable so the role gate can detect users who haven't chosen yet —
+  /// PATIENT is the semantic default exposed through `DEFAULT_ROLE` in
+  /// `@disease-prediction/shared`, applied by the gate / webhook, not by SQL.
+  role        Role?
   predictions Prediction[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

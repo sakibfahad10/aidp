@@ -20,8 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           afterSignOutUrl="/"
-          signInFallbackRedirectUrl="/predict"
-          signUpFallbackRedirectUrl="/predict"
+          signInFallbackRedirectUrl="/post-signin"
+          signUpFallbackRedirectUrl="/post-signin"
         >
           <Navbar />
           <main className="container py-8">{children}</main>
