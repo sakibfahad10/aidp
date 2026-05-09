@@ -1,8 +1,10 @@
 import type {
   ApiResponse,
+  CurrentUserResponse,
   PaginatedResponse,
   Prediction,
   PredictRequest,
+  Role,
 } from "@disease-prediction/shared";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -82,6 +84,23 @@ export async function getPredictionById(
   token?: string | null,
 ): Promise<ApiResponse<Prediction>> {
   return fetchApi<ApiResponse<Prediction>>(`/api/v1/predictions/${id}`, { token });
+}
+
+export async function getCurrentUser(
+  token: string | null,
+): Promise<ApiResponse<CurrentUserResponse>> {
+  return fetchApi<ApiResponse<CurrentUserResponse>>("/api/v1/users/me", { token });
+}
+
+export async function setUserRole(
+  role: Role,
+  token: string | null,
+): Promise<ApiResponse<CurrentUserResponse>> {
+  return fetchApi<ApiResponse<CurrentUserResponse>>("/api/v1/users/role", {
+    method: "POST",
+    body: JSON.stringify({ role }),
+    token,
+  });
 }
 
 export async function checkHealth(): Promise<ApiResponse<{ status: string }>> {

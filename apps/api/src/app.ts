@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { config, validateConfig } from "./config";
 import { errorHandler } from "./middlewares/errorHandler";
 import predictionRoutes from "./routes/predictionRoutes";
+import userRoutes from "./routes/userRoutes";
 import webhookRoutes from "./routes/webhookRoutes";
 
 validateConfig();
@@ -34,6 +35,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1", predictionRoutes);
+app.use("/api/v1", userRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({
