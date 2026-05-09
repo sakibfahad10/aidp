@@ -3,7 +3,9 @@
 import { useAuth } from "@clerk/nextjs";
 import type {
   AIPredictionResponse,
+  ApiResponse,
   InputType,
+  Prediction,
   PredictionPayload,
 } from "@disease-prediction/shared";
 import { AlertCircle, ClipboardList, FileText, Stethoscope } from "lucide-react";
@@ -22,14 +24,16 @@ export default function PredictPage() {
   const [result, setResult] = useState<AIPredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (inputType: InputType, payload: PredictionPayload) => {
+  const runPrediction = async (
+    call: (token: string | null) => Promise<ApiResponse<Prediction>>,
+  ) => {
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
       const token = await getToken();
-      const response = await createPrediction({ inputType, payload }, token);
+      const response = await call(token);
       if (response.success && response.data) {
         // Extract the AI response from the stored prediction
         const aiResult = response.data.result as AIPredictionResponse;
@@ -44,26 +48,11 @@ export default function PredictPage() {
     }
   };
 
-  const handleReportFileSubmit = async (file: File, reportType?: string) => {
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
+  const handleSubmit = (inputType: InputType, payload: PredictionPayload) =>
+    runPrediction((token) => createPrediction({ inputType, payload }, token));
 
-    try {
-      const token = await getToken();
-      const response = await createReportFilePrediction(file, reportType, token);
-      if (response.success && response.data) {
-        const aiResult = response.data.result as AIPredictionResponse;
-        setResult(aiResult);
-      } else {
-        setError(response.error || "Something went wrong");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to get prediction");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleReportFileSubmit = (file: File, reportType?: string) =>
+    runPrediction((token) => createReportFilePrediction(file, reportType, token));
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
