@@ -14,9 +14,11 @@ async function fetchApi<T>(
   const { token, ...fetchOptions } = options || {};
   const url = `${API_URL}${endpoint}`;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const headers: Record<string, string> = {};
+
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -43,6 +45,23 @@ export async function createPrediction(
   return fetchApi<ApiResponse<Prediction>>("/api/v1/predict", {
     method: "POST",
     body: JSON.stringify(request),
+    token,
+  });
+}
+
+export async function createReportFilePrediction(
+  file: File,
+  reportType: string | undefined,
+  token: string | null,
+): Promise<ApiResponse<Prediction>> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (reportType) {
+    formData.append("reportType", reportType);
+  }
+  return fetchApi<ApiResponse<Prediction>>("/api/v1/predict/report-file", {
+    method: "POST",
+    body: formData,
     token,
   });
 }

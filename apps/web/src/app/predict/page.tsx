@@ -14,7 +14,7 @@ import { StructuredForm } from "@/components/prediction/structured-form";
 import { SymptomForm } from "@/components/prediction/symptom-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createPrediction } from "@/lib/api";
+import { createPrediction, createReportFilePrediction } from "@/lib/api";
 
 export default function PredictPage() {
   const { getToken } = useAuth();
@@ -44,9 +44,25 @@ export default function PredictPage() {
     }
   };
 
-  const handleReportFileSubmit = (_file: File, _reportType?: string) => {
+  const handleReportFileSubmit = async (file: File, reportType?: string) => {
+    setIsLoading(true);
+    setError(null);
     setResult(null);
-    setError("Report file upload is not yet enabled. Please paste the report text for now.");
+
+    try {
+      const token = await getToken();
+      const response = await createReportFilePrediction(file, reportType, token);
+      if (response.success && response.data) {
+        const aiResult = response.data.result as AIPredictionResponse;
+        setResult(aiResult);
+      } else {
+        setError(response.error || "Something went wrong");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get prediction");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
