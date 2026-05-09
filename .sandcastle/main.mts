@@ -87,14 +87,20 @@ function commitDays(): string[] {
 
 // Pick the synthetic date for the next batch of commits. Stay on the latest
 // commit day until it is "full" (>= MIN_COMMITS_PER_DAY), then advance one day.
-// A business-hour time (UTC) is added for realism. Once the result would pass
-// `now`, we return `now` so future commits track the real clock.
+// A business-hour time (UTC) is added for realism.
+//
+// The date is floored at the latest commit day so it can NEVER precede existing
+// history. It is ceilinged to `now` only when the host clock is at or after that
+// day; if the host clock is behind (e.g. a sandbox with a skewed clock),
+// clamping to `now` would backdate commits before their parents and reverse
+// history, so we ignore `now` and keep the floored date instead.
 function nextFillDate(now: Date): Date {
   const days = commitDays();
   const latestDay = days[0] ?? now.toISOString().slice(0, 10);
   const countOnLatest = days.filter((d) => d === latestDay).length;
 
-  const base = new Date(`${latestDay}T00:00:00Z`);
+  const floor = new Date(`${latestDay}T00:00:00Z`);
+  const base = new Date(floor);
   if (countOnLatest >= MIN_COMMITS_PER_DAY) {
     base.setUTCDate(base.getUTCDate() + 1);
   }
@@ -105,12 +111,24 @@ function nextFillDate(now: Date): Date {
     Math.floor(Math.random() * 60),
     0,
   );
+
+  if (now.getTime() < floor.getTime()) {
+    console.warn(
+      `Host clock (${now.toISOString()}) is behind the latest commit day ` +
+        `(${latestDay}); ignoring it so commits are not backdated before history.`,
+    );
+    return base;
+  }
   return base.getTime() > now.getTime() ? now : base;
 }
 
-// Clamp a candidate date to `now` (never commit into the future).
-function clampToNow(d: Date, now: Date): Date {
-  return d.getTime() > now.getTime() ? now : d;
+// Clamp a candidate date into [floor, max(now, floor)]: never before the batch's
+// fill date (`floor`) and never into the real future. When the host clock is
+// behind `floor` (sandbox skew), the ceiling stays at `floor` so per-commit
+// offsets cannot be dragged into the past and reverse history.
+function clampToNow(d: Date, now: Date, floor: Date): Date {
+  const ceiling = Math.max(now.getTime(), floor.getTime());
+  return new Date(Math.min(Math.max(d.getTime(), floor.getTime()), ceiling));
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +239,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       const issueDate = clampToNow(
         new Date(fillDate.getTime() + index * 7 * 60 * 1000),
         now,
+        fillDate,
       ).toISOString();
 
       try {
@@ -320,6 +339,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   const mergeDate = clampToNow(
     new Date(fillDate.getTime() + (issues.length * 7 + 10) * 60 * 1000),
     now,
+    fillDate,
   ).toISOString();
 
   await sandcastle.run({
