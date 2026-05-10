@@ -1,6 +1,9 @@
 import type {
   ApiResponse,
   CurrentUserResponse,
+  DoctorOnboardingDraft,
+  DoctorOnboardingSubmit,
+  DoctorProfileResponse,
   PaginatedResponse,
   Prediction,
   PredictRequest,
@@ -99,6 +102,34 @@ export async function setUserRole(
   return fetchApi<ApiResponse<CurrentUserResponse>>("/api/v1/users/role", {
     method: "POST",
     body: JSON.stringify({ role }),
+    token,
+  });
+}
+
+export async function getDoctorProfile(
+  token: string | null,
+): Promise<ApiResponse<DoctorProfileResponse | null>> {
+  return fetchApi<ApiResponse<DoctorProfileResponse | null>>("/api/v1/doctors/me", { token });
+}
+
+export async function saveDoctorDraft(
+  patch: DoctorOnboardingDraft,
+  token: string | null,
+): Promise<ApiResponse<DoctorProfileResponse>> {
+  return fetchApi<ApiResponse<DoctorProfileResponse>>("/api/v1/doctors/me/draft", {
+    method: "PUT",
+    body: JSON.stringify(patch),
+    token,
+  });
+}
+
+export async function submitDoctorOnboarding(
+  body: DoctorOnboardingSubmit,
+  token: string | null,
+): Promise<ApiResponse<DoctorProfileResponse>> {
+  return fetchApi<ApiResponse<DoctorProfileResponse>>("/api/v1/doctors/me/submit", {
+    method: "POST",
+    body: JSON.stringify(body),
     token,
   });
 }

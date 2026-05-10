@@ -29,6 +29,50 @@ enum Role {
   DOCTOR
 }
 
+/// Mirrors `Specialty` in `@disease-prediction/shared`. `GeneralMedicine` is
+/// the controlled-vocabulary fallback used when a prediction maps to nothing
+/// else (see ADR 0003).
+enum Specialty {
+  GeneralMedicine
+  Cardiology
+  Endocrinology
+  Dermatology
+  Gastroenterology
+  Neurology
+  Pulmonology
+  Nephrology
+  Orthopedics
+  Rheumatology
+  Pediatrics
+  Psychiatry
+  Gynecology
+  ENT
+  Ophthalmology
+  Urology
+  InfectiousDisease
+  GeneralSurgery
+}
+
+enum City {
+  Dhaka
+  Chattogram
+  Sylhet
+  Rajshahi
+  Khulna
+  Barishal
+  Rangpur
+  Mymensingh
+}
+
+/// Lifecycle status for `DoctorProfile`. MVP transitions `draft → verified`
+/// directly on submit; `pending` is reserved for a future admin-review step
+/// and is currently unused.
+enum DoctorStatus {
+  draft
+  pending
+  verified
+}
+
 // --------------------------------------------------
 // Models
 // --------------------------------------------------
@@ -53,14 +97,39 @@ model Prediction {
 }
 
 model User {
-  id          String       @id
-  email       String       @unique
-  name        String?
+  id            String         @id
+  email         String         @unique
+  name          String?
   /// Nullable so the role gate can detect users who haven't chosen yet —
   /// PATIENT is the semantic default exposed through `DEFAULT_ROLE` in
   /// `@disease-prediction/shared`, applied by the gate / webhook, not by SQL.
-  role        Role?
-  predictions Prediction[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  role          Role?
+  predictions   Prediction[]
+  doctorProfile DoctorProfile?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+/// One-per-user professional profile for doctors. Created as `draft` on first
+/// onboarding step, flipped to `verified` on submit (no admin review in the
+/// MVP). BMDC is `@unique` so two profiles can't claim the same registration.
+model DoctorProfile {
+  id              String       @id @default(uuid())
+  userId          String       @unique
+  user            User         @relation(fields: [userId], references: [id])
+  phone           String?
+  publicEmail     String?
+  bmdcNumber      String?      @unique
+  qualifications  String?
+  specialties     Specialty[]
+  affiliation     String?
+  city            City?
+  experienceYears Int?
+  feeBdt          Int?
+  status          DoctorStatus @default(draft)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status])
+  @@index([city])
 }
