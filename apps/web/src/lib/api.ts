@@ -4,10 +4,12 @@ import type {
   DoctorOnboardingDraft,
   DoctorOnboardingSubmit,
   DoctorProfileResponse,
+  HealthProfile,
   PaginatedResponse,
   Prediction,
   PredictRequest,
   Role,
+  UpdateHealthProfileRequest,
 } from "@disease-prediction/shared";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -130,6 +132,21 @@ export async function submitDoctorOnboarding(
   return fetchApi<ApiResponse<DoctorProfileResponse>>("/api/v1/doctors/me/submit", {
     method: "POST",
     body: JSON.stringify(body),
+    token,
+  });
+}
+
+export async function getHealthProfile(token: string | null): Promise<ApiResponse<HealthProfile>> {
+  return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", { token });
+}
+
+export async function updateHealthProfile(
+  update: UpdateHealthProfileRequest,
+  token: string | null,
+): Promise<ApiResponse<HealthProfile>> {
+  return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", {
+    method: "PATCH",
+    body: JSON.stringify(update),
     token,
   });
 }

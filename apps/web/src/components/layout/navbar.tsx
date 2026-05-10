@@ -1,7 +1,7 @@
 "use client";
 
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { Activity, Brain, History, LogIn } from "lucide-react";
+import { Activity, Brain, History, LogIn, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ const publicNavItems = [{ href: "/", label: "Home", icon: Activity }];
 const protectedNavItems = [
   { href: "/predict", label: "Predict", icon: Brain },
   { href: "/history", label: "History", icon: History },
+  { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
 export function Navbar() {

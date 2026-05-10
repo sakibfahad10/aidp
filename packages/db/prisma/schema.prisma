@@ -106,6 +106,7 @@ model User {
   role          Role?
   predictions   Prediction[]
   doctorProfile DoctorProfile?
+  healthProfile HealthProfile?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -132,4 +133,24 @@ model DoctorProfile {
 
   @@index([status])
   @@index([city])
+}
+
+/// Patient's persistent standing health record (one per user).
+/// Auto-filled from `structured` predictions via the edited-field-aware merge
+/// and directly editable through `/profile`. Stores `age` (not `dateOfBirth`)
+/// so auto-fill from a prediction is lossless. `editedFields` records field
+/// names the patient manually edited so future auto-fills skip them.
+model HealthProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age           Int?
+  gender        String?
+  bloodType     String?
+  conditions    String[] @default([])
+  medications   String[] @default([])
+  allergies     String[] @default([])
+  editedFields  String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
