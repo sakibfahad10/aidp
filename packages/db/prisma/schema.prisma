@@ -53,14 +53,35 @@ model Prediction {
 }
 
 model User {
-  id          String       @id
-  email       String       @unique
-  name        String?
+  id            String         @id
+  email         String         @unique
+  name          String?
   /// Nullable so the role gate can detect users who haven't chosen yet —
   /// PATIENT is the semantic default exposed through `DEFAULT_ROLE` in
   /// `@disease-prediction/shared`, applied by the gate / webhook, not by SQL.
-  role        Role?
-  predictions Prediction[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  role          Role?
+  predictions   Prediction[]
+  healthProfile HealthProfile?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+/// Patient's persistent standing health record (one per user).
+/// Auto-filled from `structured` predictions via the edited-field-aware merge
+/// and directly editable through `/profile`. Stores `age` (not `dateOfBirth`)
+/// so auto-fill from a prediction is lossless. `editedFields` records field
+/// names the patient manually edited so future auto-fills skip them.
+model HealthProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age           Int?
+  gender        String?
+  bloodType     String?
+  conditions    String[] @default([])
+  medications   String[] @default([])
+  allergies     String[] @default([])
+  editedFields  String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

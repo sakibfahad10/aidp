@@ -1,10 +1,12 @@
 import type {
   ApiResponse,
   CurrentUserResponse,
+  HealthProfile,
   PaginatedResponse,
   Prediction,
   PredictRequest,
   Role,
+  UpdateHealthProfileRequest,
 } from "@disease-prediction/shared";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -99,6 +101,21 @@ export async function setUserRole(
   return fetchApi<ApiResponse<CurrentUserResponse>>("/api/v1/users/role", {
     method: "POST",
     body: JSON.stringify({ role }),
+    token,
+  });
+}
+
+export async function getHealthProfile(token: string | null): Promise<ApiResponse<HealthProfile>> {
+  return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", { token });
+}
+
+export async function updateHealthProfile(
+  update: UpdateHealthProfileRequest,
+  token: string | null,
+): Promise<ApiResponse<HealthProfile>> {
+  return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", {
+    method: "PATCH",
+    body: JSON.stringify(update),
     token,
   });
 }

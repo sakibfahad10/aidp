@@ -1,3 +1,4 @@
+export * from "./healthProfile";
 export * from "./report-file";
 export * from "./role";
 export * from "./schemas";
