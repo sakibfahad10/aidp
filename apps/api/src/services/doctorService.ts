@@ -4,7 +4,6 @@ import {
   type DoctorOnboardingSubmit,
   type DoctorProfileResponse,
   DoctorStatus,
-  type DoctorStatus as SharedDoctorStatus,
   type Specialty,
 } from "@disease-prediction/shared";
 import { AppError } from "../middlewares/errorHandler";
@@ -36,7 +35,7 @@ function toResponse(row: NonNullable<DoctorProfileRow>): DoctorProfileResponse {
     city: row.city as unknown as City | null,
     experienceYears: row.experienceYears,
     feeBdt: row.feeBdt,
-    status: row.status as unknown as SharedDoctorStatus,
+    status: row.status as unknown as DoctorStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -65,7 +64,7 @@ export class DoctorService {
   async submit(userId: string, body: DoctorOnboardingSubmit): Promise<DoctorProfileResponse> {
     try {
       const row = await this.repo.submit(userId, body);
-      if ((row.status as unknown as SharedDoctorStatus) !== DoctorStatus.VERIFIED) {
+      if ((row.status as unknown as DoctorStatus) !== DoctorStatus.VERIFIED) {
         // The repository sets `verified`; this is a belt-and-braces guard
         // against a future migration drift.
         throw new AppError(500, "Submitted profile did not reach verified state");

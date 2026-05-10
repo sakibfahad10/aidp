@@ -4,16 +4,10 @@ import {
   type Specialty as PrismaSpecialty,
   prisma,
 } from "@disease-prediction/db";
-import type {
-  City,
-  DoctorOnboardingDraft,
-  DoctorOnboardingSubmit,
-  DoctorStatus,
-  Specialty,
-} from "@disease-prediction/shared";
+import type { DoctorOnboardingDraft, DoctorOnboardingSubmit } from "@disease-prediction/shared";
 
-// Prisma enums and shared enums share identical string values, so a direct
-// cast at the boundary is sound.
+// Shared and Prisma enums (`Specialty`, `City`, `DoctorStatus`) share identical
+// string values, so a direct cast at the boundary is sound.
 
 export class DoctorRepository {
   async findByUserId(userId: string) {
@@ -45,30 +39,21 @@ export class DoctorRepository {
   }
 }
 
+// `undefined` keys are treated by Prisma as "field not provided" in both create
+// and update, so spreading the patch verbatim preserves the partial-update
+// semantics the wizard relies on.
 function toPrismaPatch(patch: Partial<DoctorOnboardingSubmit>) {
-  const data: {
-    phone?: string;
-    publicEmail?: string;
-    bmdcNumber?: string;
-    qualifications?: string;
-    specialties?: PrismaSpecialty[];
-    affiliation?: string;
-    city?: PrismaCity;
-    experienceYears?: number;
-    feeBdt?: number;
-  } = {};
-  if (patch.phone !== undefined) data.phone = patch.phone;
-  if (patch.publicEmail !== undefined) data.publicEmail = patch.publicEmail;
-  if (patch.bmdcNumber !== undefined) data.bmdcNumber = patch.bmdcNumber;
-  if (patch.qualifications !== undefined) data.qualifications = patch.qualifications;
-  if (patch.specialties !== undefined) {
-    data.specialties = patch.specialties as unknown as PrismaSpecialty[];
-  }
-  if (patch.affiliation !== undefined) data.affiliation = patch.affiliation;
-  if (patch.city !== undefined) data.city = patch.city as unknown as PrismaCity;
-  if (patch.experienceYears !== undefined) data.experienceYears = patch.experienceYears;
-  if (patch.feeBdt !== undefined) data.feeBdt = patch.feeBdt;
-  return data;
+  return {
+    phone: patch.phone,
+    publicEmail: patch.publicEmail,
+    bmdcNumber: patch.bmdcNumber,
+    qualifications: patch.qualifications,
+    specialties: patch.specialties as unknown as PrismaSpecialty[] | undefined,
+    affiliation: patch.affiliation,
+    city: patch.city as unknown as PrismaCity | undefined,
+    experienceYears: patch.experienceYears,
+    feeBdt: patch.feeBdt,
+  };
 }
 
 export type DoctorProfileRow = Awaited<ReturnType<DoctorRepository["findByUserId"]>>;
@@ -78,7 +63,3 @@ export type DoctorRepositoryLike = {
   upsertDraft(userId: string, patch: DoctorOnboardingDraft): Promise<NonNullable<DoctorProfileRow>>;
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
 };
-
-// Re-export shared types for callers (kept here so the surrounding modules
-// don't accidentally depend on Prisma's generated enum types).
-export type { City, DoctorStatus, Specialty };

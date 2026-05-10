@@ -32,7 +32,7 @@ function fakeRepo() {
 
   const repo = {
     findByUserId: vi.fn(async (userId: string) => byUser.get(userId) ?? null),
-    upsertDraft: vi.fn(async (userId: string, patch: Partial<DoctorOnboardingDraft>) => {
+    upsertDraft: vi.fn(async (userId: string, patch: DoctorOnboardingDraft) => {
       const existing = byUser.get(userId);
       const now = new Date();
       if (patch.bmdcNumber && patch.bmdcNumber !== existing?.bmdcNumber) {
