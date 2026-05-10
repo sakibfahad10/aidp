@@ -6,20 +6,10 @@ import type {
 } from "@disease-prediction/shared";
 import { HEALTH_PROFILE_FIELDS } from "@disease-prediction/shared";
 import {
+  emptyHealthProfile,
   HealthProfileRepository,
-  type HealthProfileWriteable,
 } from "../repositories/healthProfileRepository";
 import { mergeStructuredIntoHealthProfile } from "./healthProfileMerge";
-
-const EMPTY_PROFILE: HealthProfile = {
-  age: null,
-  gender: null,
-  bloodType: null,
-  conditions: [],
-  medications: [],
-  allergies: [],
-  editedFields: [],
-};
 
 export class HealthProfileService {
   private repo: HealthProfileRepository;
@@ -30,7 +20,7 @@ export class HealthProfileService {
 
   async get(userId: string): Promise<HealthProfile> {
     const existing = await this.repo.findByUserId(userId);
-    return existing ?? EMPTY_PROFILE;
+    return existing ?? emptyHealthProfile();
   }
 
   /**
@@ -66,7 +56,7 @@ export class HealthProfileService {
 }
 
 function applyEditedField(
-  target: HealthProfileWriteable,
+  target: HealthProfile,
   field: HealthProfileField,
   update: UpdateHealthProfileRequest,
 ): void {

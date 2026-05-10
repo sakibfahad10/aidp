@@ -13,25 +13,17 @@ function toHealthProfile(row: PrismaHealthProfile): HealthProfile {
   };
 }
 
-export interface HealthProfileWriteable {
-  age: number | null;
-  gender: string | null;
-  bloodType: string | null;
-  conditions: string[];
-  medications: string[];
-  allergies: string[];
-  editedFields: HealthProfileField[];
+export function emptyHealthProfile(): HealthProfile {
+  return {
+    age: null,
+    gender: null,
+    bloodType: null,
+    conditions: [],
+    medications: [],
+    allergies: [],
+    editedFields: [],
+  };
 }
-
-const EMPTY: HealthProfileWriteable = {
-  age: null,
-  gender: null,
-  bloodType: null,
-  conditions: [],
-  medications: [],
-  allergies: [],
-  editedFields: [],
-};
 
 export class HealthProfileRepository {
   async findByUserId(userId: string): Promise<HealthProfile | null> {
@@ -39,9 +31,9 @@ export class HealthProfileRepository {
     return row ? toHealthProfile(row) : null;
   }
 
-  async getOrEmpty(userId: string): Promise<HealthProfileWriteable> {
+  async getOrEmpty(userId: string): Promise<HealthProfile> {
     const existing = await this.findByUserId(userId);
-    if (!existing) return { ...EMPTY };
+    if (!existing) return emptyHealthProfile();
     return {
       age: existing.age,
       gender: existing.gender,
@@ -53,28 +45,20 @@ export class HealthProfileRepository {
     };
   }
 
-  async upsert(userId: string, data: HealthProfileWriteable): Promise<HealthProfile> {
+  async upsert(userId: string, data: HealthProfile): Promise<HealthProfile> {
+    const values = {
+      age: data.age,
+      gender: data.gender,
+      bloodType: data.bloodType,
+      conditions: data.conditions,
+      medications: data.medications,
+      allergies: data.allergies,
+      editedFields: data.editedFields,
+    };
     const row = await prisma.healthProfile.upsert({
       where: { userId },
-      create: {
-        userId,
-        age: data.age,
-        gender: data.gender,
-        bloodType: data.bloodType,
-        conditions: data.conditions,
-        medications: data.medications,
-        allergies: data.allergies,
-        editedFields: data.editedFields,
-      },
-      update: {
-        age: data.age,
-        gender: data.gender,
-        bloodType: data.bloodType,
-        conditions: data.conditions,
-        medications: data.medications,
-        allergies: data.allergies,
-        editedFields: data.editedFields,
-      },
+      create: { userId, ...values },
+      update: values,
     });
     return toHealthProfile(row);
   }

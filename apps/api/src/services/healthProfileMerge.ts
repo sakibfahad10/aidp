@@ -1,21 +1,8 @@
-import type { HealthProfileField, StructuredPayload } from "@disease-prediction/shared";
-
-/**
- * Shape consumed by the pure merge: a HealthProfile reduced to the fields the
- * merge cares about. Decoupled from the Prisma row so this stays unit-testable
- * without a database.
- */
-export interface HealthProfileMergeInput {
-  age: number | null;
-  gender: string | null;
-  bloodType: string | null;
-  conditions: string[];
-  medications: string[];
-  allergies: string[];
-  editedFields: HealthProfileField[];
-}
-
-export type HealthProfileMergeResult = HealthProfileMergeInput;
+import type {
+  HealthProfile,
+  HealthProfileField,
+  StructuredPayload,
+} from "@disease-prediction/shared";
 
 function unionDedup(existing: string[], incoming: string[]): string[] {
   const seen = new Set(existing.map((v) => v.trim().toLowerCase()));
@@ -43,11 +30,11 @@ function unionDedup(existing: string[], incoming: string[]): string[] {
  * - `bloodType` and `allergies` have no prediction source and are left alone.
  */
 export function mergeStructuredIntoHealthProfile(
-  profile: HealthProfileMergeInput,
+  profile: HealthProfile,
   payload: StructuredPayload,
-): HealthProfileMergeResult {
+): HealthProfile {
   const edited = new Set<HealthProfileField>(profile.editedFields);
-  const result: HealthProfileMergeResult = {
+  const result: HealthProfile = {
     age: profile.age,
     gender: profile.gender,
     bloodType: profile.bloodType,
@@ -57,10 +44,10 @@ export function mergeStructuredIntoHealthProfile(
     editedFields: [...profile.editedFields],
   };
 
-  if (!edited.has("age") && result.age === null && typeof payload.age === "number") {
+  if (!edited.has("age") && result.age === null) {
     result.age = payload.age;
   }
-  if (!edited.has("gender") && result.gender === null && payload.gender) {
+  if (!edited.has("gender") && result.gender === null) {
     result.gender = payload.gender;
   }
 

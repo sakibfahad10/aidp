@@ -1,11 +1,8 @@
-import type { StructuredPayload } from "@disease-prediction/shared";
+import type { HealthProfile, StructuredPayload } from "@disease-prediction/shared";
 import { describe, expect, it } from "vitest";
-import {
-  type HealthProfileMergeInput,
-  mergeStructuredIntoHealthProfile,
-} from "./healthProfileMerge";
+import { mergeStructuredIntoHealthProfile } from "./healthProfileMerge";
 
-function emptyProfile(): HealthProfileMergeInput {
+function emptyProfile(): HealthProfile {
   return {
     age: null,
     gender: null,
