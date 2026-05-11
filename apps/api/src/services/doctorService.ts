@@ -1,14 +1,18 @@
 import {
   type City,
+  type DirectoryDoctor,
+  type DirectoryQuery,
   type DoctorOnboardingDraft,
   type DoctorOnboardingSubmit,
   type DoctorProfileResponse,
   DoctorStatus,
+  type PublicDoctorProfile,
   type Specialty,
 } from "@disease-prediction/shared";
 import { AppError } from "../middlewares/errorHandler";
 import {
   type DoctorProfileRow,
+  type DoctorProfileWithUserRow,
   DoctorRepository,
   type DoctorRepositoryLike,
 } from "../repositories/doctorRepository";
@@ -38,6 +42,27 @@ function toResponse(row: NonNullable<DoctorProfileRow>): DoctorProfileResponse {
     status: row.status as unknown as DoctorStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function toDirectoryRow(row: NonNullable<DoctorProfileWithUserRow>): DirectoryDoctor {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.user?.name ?? null,
+    specialties: row.specialties as unknown as Specialty[],
+    affiliation: row.affiliation,
+    city: row.city as unknown as City | null,
+    experienceYears: row.experienceYears,
+    feeBdt: row.feeBdt,
+  };
+}
+
+function toPublicProfile(row: NonNullable<DoctorProfileWithUserRow>): PublicDoctorProfile {
+  return {
+    ...toDirectoryRow(row),
+    qualifications: row.qualifications,
+    publicEmail: row.publicEmail,
   };
 }
 
@@ -76,5 +101,21 @@ export class DoctorService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Public directory of verified doctors. Filters by specialty/city/affiliation
+   * and orders by fee ascending. The has-open-slot ordering factor lands with
+   * the availability slice.
+   */
+  async listDirectory(query: DirectoryQuery): Promise<DirectoryDoctor[]> {
+    const rows = await this.repo.findVerifiedDirectory(query);
+    return rows.map(toDirectoryRow);
+  }
+
+  /** Public profile by `DoctorProfile.id`. Returns null for non-verified. */
+  async getPublicProfile(id: string): Promise<PublicDoctorProfile | null> {
+    const row = await this.repo.findPublicById(id);
+    return row ? toPublicProfile(row) : null;
   }
 }

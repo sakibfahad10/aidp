@@ -180,3 +180,53 @@ export interface DoctorProfileResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Query for the public verified-doctor directory. Every field optional —
+ * an empty query lists every verified doctor (fee asc). `specialty` /
+ * `city` are validated against the controlled vocabularies; `affiliation`
+ * is a free-text contains-match.
+ */
+export const directoryQuerySchema = z.object({
+  specialty: specialtySchema.optional(),
+  city: citySchema.optional(),
+  affiliation: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+});
+
+export type DirectoryQuery = z.infer<typeof directoryQuerySchema>;
+
+/**
+ * One row of the public doctor directory. `name` is the doctor's `User.name`
+ * (may be null if the user hasn't set one); `userId` is intentionally
+ * present so the row can link to the public profile page.
+ *
+ * Only verified doctors appear here — no login email, no draft fields, no
+ * BMDC number. Just what a patient needs to decide whether to look closer.
+ */
+export interface DirectoryDoctor {
+  id: string;
+  userId: string;
+  name: string | null;
+  specialties: Specialty[];
+  affiliation: string | null;
+  city: City | null;
+  experienceYears: number | null;
+  feeBdt: number | null;
+}
+
+/**
+ * The public profile of a verified doctor. Returned by
+ * GET /api/v1/doctors/:id. Includes everything `DirectoryDoctor` carries
+ * plus the qualifications string and the doctor's public contact email
+ * (NOT the login email).
+ */
+export interface PublicDoctorProfile extends DirectoryDoctor {
+  qualifications: string | null;
+  publicEmail: string | null;
+}

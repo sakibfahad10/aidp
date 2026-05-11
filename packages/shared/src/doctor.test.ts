@@ -4,6 +4,7 @@ import {
   City,
   citySchema,
   DoctorStatus,
+  directoryQuerySchema,
   doctorOnboardingDraftSchema,
   doctorOnboardingSubmitSchema,
   doctorStatusSchema,
@@ -201,5 +202,32 @@ describe("doctorOnboardingSubmitSchema", () => {
     expect(
       doctorOnboardingSubmitSchema.safeParse({ ...valid, publicEmail: "not-an-email" }).success,
     ).toBe(false);
+  });
+});
+
+describe("directoryQuerySchema", () => {
+  it("accepts an entirely empty query", () => {
+    expect(directoryQuerySchema.parse({})).toEqual({});
+  });
+
+  it("accepts all three filters together", () => {
+    const parsed = directoryQuerySchema.parse({
+      specialty: Specialty.Cardiology,
+      city: City.Dhaka,
+      affiliation: "Square Hospital",
+    });
+    expect(parsed.specialty).toBe(Specialty.Cardiology);
+    expect(parsed.city).toBe(City.Dhaka);
+    expect(parsed.affiliation).toBe("Square Hospital");
+  });
+
+  it("rejects unknown specialty / city values", () => {
+    expect(directoryQuerySchema.safeParse({ specialty: "Astrology" }).success).toBe(false);
+    expect(directoryQuerySchema.safeParse({ city: "Atlantis" }).success).toBe(false);
+  });
+
+  it("trims affiliation and treats whitespace-only as absent", () => {
+    expect(directoryQuerySchema.parse({ affiliation: "  Square  " }).affiliation).toBe("Square");
+    expect(directoryQuerySchema.safeParse({ affiliation: "    " }).success).toBe(false);
   });
 });

@@ -1,5 +1,9 @@
 import { getAuth } from "@clerk/express";
-import type { DoctorOnboardingDraft, DoctorOnboardingSubmit } from "@disease-prediction/shared";
+import {
+  type DoctorOnboardingDraft,
+  type DoctorOnboardingSubmit,
+  directoryQuerySchema,
+} from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
 import { DoctorService } from "../services/doctorService";
 
@@ -49,6 +53,41 @@ export class DoctorController {
         data: profile,
         message: "Doctor profile verified",
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Public directory list — no auth required. Query is parsed through
+   * `directoryQuerySchema`; unknown / invalid filter values are rejected
+   * with a 400 by the global Zod handler.
+   */
+  static async listDirectory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = directoryQuerySchema.parse(req.query);
+      const doctors = await doctorService.listDirectory(query);
+      res.json({ success: true, data: doctors });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Public profile by `DoctorProfile.id` — no auth required. */
+  static async getPublicProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const raw = req.params.id;
+      const id = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
+      if (!id) {
+        res.status(400).json({ success: false, error: "Missing doctor id" });
+        return;
+      }
+      const profile = await doctorService.getPublicProfile(id);
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Doctor not found" });
+        return;
+      }
+      res.json({ success: true, data: profile });
     } catch (error) {
       next(error);
     }

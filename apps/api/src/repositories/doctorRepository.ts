@@ -4,7 +4,11 @@ import {
   type Specialty as PrismaSpecialty,
   prisma,
 } from "@disease-prediction/db";
-import type { DoctorOnboardingDraft, DoctorOnboardingSubmit } from "@disease-prediction/shared";
+import type {
+  DirectoryQuery,
+  DoctorOnboardingDraft,
+  DoctorOnboardingSubmit,
+} from "@disease-prediction/shared";
 
 // Shared and Prisma enums (`Specialty`, `City`, `DoctorStatus`) share identical
 // string values, so a direct cast at the boundary is sound.
@@ -37,6 +41,47 @@ export class DoctorRepository {
       update: { ...data, status: "verified" as PrismaDoctorStatus },
     });
   }
+
+  /**
+   * Public directory list. Always scoped to `verified` doctors (non-verified
+   * never appear) and ordered by fee ascending — the has-open-slot ordering
+   * factor lands with the availability slice.
+   *
+   * `specialty` matches when the doctor's `specialties` array contains it.
+   * `city` is an exact enum match. `affiliation` is a case-insensitive
+   * contains-match on free-text.
+   */
+  async findVerifiedDirectory(query: DirectoryQuery) {
+    return prisma.doctorProfile.findMany({
+      where: {
+        status: "verified" as PrismaDoctorStatus,
+        ...(query.specialty
+          ? { specialties: { has: query.specialty as unknown as PrismaSpecialty } }
+          : {}),
+        ...(query.city ? { city: query.city as unknown as PrismaCity } : {}),
+        ...(query.affiliation
+          ? { affiliation: { contains: query.affiliation, mode: "insensitive" as const } }
+          : {}),
+      },
+      orderBy: { feeBdt: "asc" },
+      include: { user: { select: { name: true } } },
+    });
+  }
+
+  /**
+   * Public profile lookup. Returns null if the row doesn't exist OR isn't
+   * verified — the caller treats both the same so non-verified profiles
+   * never leak.
+   */
+  async findPublicById(id: string) {
+    const row = await prisma.doctorProfile.findUnique({
+      where: { id },
+      include: { user: { select: { name: true } } },
+    });
+    if (!row) return null;
+    if ((row.status as unknown as string) !== "verified") return null;
+    return row;
+  }
 }
 
 // `undefined` keys are treated by Prisma as "field not provided" in both create
@@ -57,9 +102,14 @@ function toPrismaPatch(patch: Partial<DoctorOnboardingSubmit>) {
 }
 
 export type DoctorProfileRow = Awaited<ReturnType<DoctorRepository["findByUserId"]>>;
+export type DoctorProfileWithUserRow = Awaited<ReturnType<DoctorRepository["findPublicById"]>>;
 
 export type DoctorRepositoryLike = {
   findByUserId(userId: string): Promise<DoctorProfileRow>;
   upsertDraft(userId: string, patch: DoctorOnboardingDraft): Promise<NonNullable<DoctorProfileRow>>;
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
+  findVerifiedDirectory(
+    query: DirectoryQuery,
+  ): Promise<Awaited<ReturnType<DoctorRepository["findVerifiedDirectory"]>>>;
+  findPublicById(id: string): Promise<DoctorProfileWithUserRow>;
 };

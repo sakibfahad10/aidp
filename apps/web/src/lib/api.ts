@@ -1,6 +1,8 @@
 import type {
   ApiResponse,
   CurrentUserResponse,
+  DirectoryDoctor,
+  DirectoryQuery,
   DoctorOnboardingDraft,
   DoctorOnboardingSubmit,
   DoctorProfileResponse,
@@ -8,6 +10,7 @@ import type {
   PaginatedResponse,
   Prediction,
   PredictRequest,
+  PublicDoctorProfile,
   Role,
   UpdateHealthProfileRequest,
 } from "@disease-prediction/shared";
@@ -134,6 +137,23 @@ export async function submitDoctorOnboarding(
     body: JSON.stringify(body),
     token,
   });
+}
+
+export async function listDoctors(
+  query: DirectoryQuery = {},
+): Promise<ApiResponse<DirectoryDoctor[]>> {
+  const params = new URLSearchParams();
+  if (query.specialty) params.set("specialty", query.specialty);
+  if (query.city) params.set("city", query.city);
+  if (query.affiliation) params.set("affiliation", query.affiliation);
+  const qs = params.toString();
+  return fetchApi<ApiResponse<DirectoryDoctor[]>>(`/api/v1/doctors${qs ? `?${qs}` : ""}`);
+}
+
+export async function getPublicDoctorProfile(
+  id: string,
+): Promise<ApiResponse<PublicDoctorProfile>> {
+  return fetchApi<ApiResponse<PublicDoctorProfile>>(`/api/v1/doctors/${encodeURIComponent(id)}`);
 }
 
 export async function getHealthProfile(token: string | null): Promise<ApiResponse<HealthProfile>> {

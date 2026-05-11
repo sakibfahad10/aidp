@@ -1,13 +1,16 @@
 "use client";
 
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { Activity, Brain, History, LogIn, UserRound } from "lucide-react";
+import { Activity, Brain, History, LogIn, Stethoscope, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const publicNavItems = [{ href: "/", label: "Home", icon: Activity }];
+const publicNavItems = [
+  { href: "/", label: "Home", icon: Activity },
+  { href: "/doctors", label: "Doctors", icon: Stethoscope },
+];
 
 const protectedNavItems = [
   { href: "/predict", label: "Predict", icon: Brain },

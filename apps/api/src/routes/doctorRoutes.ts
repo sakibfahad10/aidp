@@ -13,6 +13,11 @@ const router = Router();
 
 const doctorOnly = requireRole(Role.DOCTOR);
 
+// Public directory + public profile. Both are intentionally unauthenticated
+// — patients browsing the directory may not yet be signed in, and a deep-link
+// from a prediction result should land without an auth wall.
+router.get("/doctors", DoctorController.listDirectory);
+
 router.get("/doctors/me", requireApiAuth, doctorOnly, DoctorController.getMe);
 
 router.put(
@@ -30,5 +35,7 @@ router.post(
   validateBody(doctorOnboardingSubmitSchema),
   DoctorController.submit,
 );
+
+router.get("/doctors/:id", DoctorController.getPublicProfile);
 
 export default router;

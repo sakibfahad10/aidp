@@ -1,5 +1,6 @@
 import {
   City,
+  type DirectoryQuery,
   type DoctorOnboardingDraft,
   type DoctorOnboardingSubmit,
   DoctorStatus,
@@ -22,6 +23,7 @@ type Stored = {
   experienceYears: number | null;
   feeBdt: number | null;
   status: DoctorStatus;
+  userName: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -29,6 +31,26 @@ type Stored = {
 function fakeRepo() {
   const byUser = new Map<string, Stored>();
   const seenBmdc = new Set<string>();
+
+  function toRow(s: Stored) {
+    return {
+      id: s.id,
+      userId: s.userId,
+      phone: s.phone,
+      publicEmail: s.publicEmail,
+      bmdcNumber: s.bmdcNumber,
+      qualifications: s.qualifications,
+      specialties: s.specialties,
+      affiliation: s.affiliation,
+      city: s.city,
+      experienceYears: s.experienceYears,
+      feeBdt: s.feeBdt,
+      status: s.status,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      user: { name: s.userName },
+    };
+  }
 
   const repo = {
     findByUserId: vi.fn(async (userId: string) => byUser.get(userId) ?? null),
@@ -53,6 +75,7 @@ function fakeRepo() {
         experienceYears: patch.experienceYears ?? existing?.experienceYears ?? null,
         feeBdt: patch.feeBdt ?? existing?.feeBdt ?? null,
         status: existing?.status ?? DoctorStatus.DRAFT,
+        userName: existing?.userName ?? null,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
@@ -71,6 +94,7 @@ function fakeRepo() {
         userId,
         ...body,
         status: DoctorStatus.VERIFIED,
+        userName: existing?.userName ?? null,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
@@ -78,8 +102,49 @@ function fakeRepo() {
       seenBmdc.add(body.bmdcNumber);
       return next;
     }),
+    findVerifiedDirectory: vi.fn(async (query: DirectoryQuery) => {
+      const affil = query.affiliation?.toLowerCase();
+      const filtered = [...byUser.values()].filter((s) => {
+        if (s.status !== DoctorStatus.VERIFIED) return false;
+        if (query.specialty && !s.specialties.includes(query.specialty)) return false;
+        if (query.city && s.city !== query.city) return false;
+        if (affil && !(s.affiliation ?? "").toLowerCase().includes(affil)) return false;
+        return true;
+      });
+      filtered.sort(
+        (a, b) => (a.feeBdt ?? Number.MAX_SAFE_INTEGER) - (b.feeBdt ?? Number.MAX_SAFE_INTEGER),
+      );
+      return filtered.map(toRow);
+    }),
+    findPublicById: vi.fn(async (id: string) => {
+      const found = [...byUser.values()].find((s) => s.id === id);
+      if (!found) return null;
+      if (found.status !== DoctorStatus.VERIFIED) return null;
+      return toRow(found);
+    }),
   };
   return { repo, byUser, seenBmdc };
+}
+
+function seed(byUser: Map<string, Stored>, s: Partial<Stored> & { userId: string; id: string }) {
+  const now = new Date("2026-05-10T00:00:00.000Z");
+  byUser.set(s.userId, {
+    id: s.id,
+    userId: s.userId,
+    phone: s.phone ?? "+8801712345678",
+    publicEmail: s.publicEmail ?? "dr@example.com",
+    bmdcNumber: s.bmdcNumber ?? `A-${s.id}`,
+    qualifications: s.qualifications ?? "MBBS",
+    specialties: s.specialties ?? [Specialty.GeneralMedicine],
+    affiliation: s.affiliation ?? null,
+    city: s.city ?? null,
+    experienceYears: s.experienceYears ?? null,
+    feeBdt: s.feeBdt ?? null,
+    status: s.status ?? DoctorStatus.VERIFIED,
+    userName: s.userName ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
 }
 
 describe("DoctorService.getByUserId", () => {
@@ -105,6 +170,7 @@ describe("DoctorService.getByUserId", () => {
       experienceYears: 5,
       feeBdt: 1200,
       status: DoctorStatus.DRAFT,
+      userName: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -178,5 +244,135 @@ describe("DoctorService.submit", () => {
     await expect(
       svc.submit("user_2", { ...submission, publicEmail: "other@example.com" }),
     ).rejects.toBeInstanceOf(AppError);
+  });
+});
+
+describe("DoctorService.listDirectory", () => {
+  it("returns only verified doctors — drafts are filtered out", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "1",
+      userId: "u1",
+      specialties: [Specialty.Cardiology],
+      city: City.Dhaka,
+      feeBdt: 1500,
+      userName: "Dr. A",
+    });
+    seed(byUser, {
+      id: "2",
+      userId: "u2",
+      specialties: [Specialty.Cardiology],
+      city: City.Dhaka,
+      feeBdt: 800,
+      status: DoctorStatus.DRAFT,
+      userName: "Dr. B (draft)",
+    });
+    const svc = new DoctorService(repo);
+    const list = await svc.listDirectory({});
+    expect(list).toHaveLength(1);
+    expect(list[0]?.name).toBe("Dr. A");
+  });
+
+  it("filters by specialty, city, and affiliation together", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "1",
+      userId: "u1",
+      specialties: [Specialty.Cardiology],
+      city: City.Dhaka,
+      affiliation: "Square Hospital",
+      feeBdt: 1500,
+    });
+    seed(byUser, {
+      id: "2",
+      userId: "u2",
+      specialties: [Specialty.Dermatology],
+      city: City.Dhaka,
+      affiliation: "Square Hospital",
+      feeBdt: 1200,
+    });
+    seed(byUser, {
+      id: "3",
+      userId: "u3",
+      specialties: [Specialty.Cardiology],
+      city: City.Chattogram,
+      affiliation: "Square Hospital",
+      feeBdt: 1000,
+    });
+    seed(byUser, {
+      id: "4",
+      userId: "u4",
+      specialties: [Specialty.Cardiology],
+      city: City.Dhaka,
+      affiliation: "Apollo",
+      feeBdt: 900,
+    });
+    const svc = new DoctorService(repo);
+    const list = await svc.listDirectory({
+      specialty: Specialty.Cardiology,
+      city: City.Dhaka,
+      affiliation: "square",
+    });
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe("1");
+  });
+
+  it("orders results by fee ascending", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, { id: "1", userId: "u1", feeBdt: 1500 });
+    seed(byUser, { id: "2", userId: "u2", feeBdt: 500 });
+    seed(byUser, { id: "3", userId: "u3", feeBdt: 1000 });
+    const svc = new DoctorService(repo);
+    const list = await svc.listDirectory({});
+    expect(list.map((d) => d.feeBdt)).toEqual([500, 1000, 1500]);
+  });
+
+  it("never exposes login email, BMDC, or status in directory rows", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, { id: "1", userId: "u1", bmdcNumber: "A-99999", publicEmail: "p@x.com" });
+    const svc = new DoctorService(repo);
+    const list = await svc.listDirectory({});
+    expect(list).toHaveLength(1);
+    const row = list[0] as unknown as Record<string, unknown>;
+    expect(row.bmdcNumber).toBeUndefined();
+    expect(row.publicEmail).toBeUndefined();
+    expect(row.status).toBeUndefined();
+  });
+});
+
+describe("DoctorService.getPublicProfile", () => {
+  it("returns the verified profile when found", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "doc_1",
+      userId: "u1",
+      specialties: [Specialty.Cardiology],
+      affiliation: "Square Hospital",
+      city: City.Dhaka,
+      qualifications: "MBBS, FCPS",
+      experienceYears: 10,
+      feeBdt: 1500,
+      publicEmail: "dr@example.com",
+      userName: "Dr. Alice",
+    });
+    const svc = new DoctorService(repo);
+    const profile = await svc.getPublicProfile("doc_1");
+    expect(profile).not.toBeNull();
+    expect(profile?.name).toBe("Dr. Alice");
+    expect(profile?.qualifications).toBe("MBBS, FCPS");
+    expect(profile?.publicEmail).toBe("dr@example.com");
+  });
+
+  it("returns null for a non-verified profile", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, { id: "doc_2", userId: "u2", status: DoctorStatus.DRAFT });
+    const svc = new DoctorService(repo);
+    expect(await svc.getPublicProfile("doc_2")).toBeNull();
+  });
+
+  it("returns null when no profile with that id exists", async () => {
+    const { repo } = fakeRepo();
+    const svc = new DoctorService(repo);
+    expect(await svc.getPublicProfile("unknown")).toBeNull();
   });
 });
