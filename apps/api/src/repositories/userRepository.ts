@@ -1,5 +1,5 @@
 import { type Role as PrismaRole, prisma, type User } from "@disease-prediction/db";
-import type { Role } from "@disease-prediction/shared";
+import { Role } from "@disease-prediction/shared";
 
 // Shared `Role` and Prisma `Role` are distinct types but share identical string
 // values, so a direct cast at the boundary is sound.
@@ -36,7 +36,7 @@ export class UserRepository {
         // PATIENT role implies patient capability — match the webhook policy
         // so the gate and the webhook never disagree. DOCTOR keeps whatever
         // capability flag was already there (defaults to false on create).
-        ...(role === ("PATIENT" as Role) ? { patientCapability: true } : {}),
+        ...(role === Role.PATIENT ? { patientCapability: true } : {}),
       },
     });
   }
