@@ -69,18 +69,15 @@ export class DoctorRepository {
   }
 
   /**
-   * Public profile lookup. Returns null if the row doesn't exist OR isn't
-   * verified — the caller treats both the same so non-verified profiles
-   * never leak.
+   * Public profile lookup. Scoped to `verified` at the query level so a
+   * draft or pending profile with that id is indistinguishable from "no
+   * such doctor" — non-verified profiles never leak.
    */
   async findPublicById(id: string) {
-    const row = await prisma.doctorProfile.findUnique({
-      where: { id },
+    return prisma.doctorProfile.findFirst({
+      where: { id, status: "verified" as PrismaDoctorStatus },
       include: { user: { select: { name: true } } },
     });
-    if (!row) return null;
-    if ((row.status as unknown as string) !== "verified") return null;
-    return row;
   }
 }
 

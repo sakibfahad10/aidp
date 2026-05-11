@@ -76,9 +76,8 @@ export class DoctorController {
   /** Public profile by `DoctorProfile.id` — no auth required. */
   static async getPublicProfile(req: Request, res: Response, next: NextFunction) {
     try {
-      const raw = req.params.id;
-      const id = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
-      if (!id) {
+      const { id } = req.params;
+      if (typeof id !== "string" || !id) {
         res.status(400).json({ success: false, error: "Missing doctor id" });
         return;
       }

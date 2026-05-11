@@ -190,13 +190,7 @@ export interface DoctorProfileResponse {
 export const directoryQuerySchema = z.object({
   specialty: specialtySchema.optional(),
   city: citySchema.optional(),
-  affiliation: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200)
-    .optional()
-    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  affiliation: z.string().trim().min(1).max(200).optional(),
 });
 
 export type DirectoryQuery = z.infer<typeof directoryQuerySchema>;
