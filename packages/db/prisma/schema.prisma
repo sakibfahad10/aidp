@@ -73,6 +73,14 @@ enum DoctorStatus {
   verified
 }
 
+/// Lifecycle status for a concrete `AvailabilitySlot`. `open` rows are
+/// bookable; `booked` rows are locked to an `Appointment` (added in a later
+/// slice) and can no longer be removed by the editor.
+enum SlotStatus {
+  open
+  booked
+}
+
 // --------------------------------------------------
 // Models
 // --------------------------------------------------
@@ -115,24 +123,43 @@ model User {
 /// onboarding step, flipped to `verified` on submit (no admin review in the
 /// MVP). BMDC is `@unique` so two profiles can't claim the same registration.
 model DoctorProfile {
-  id              String       @id @default(uuid())
-  userId          String       @unique
-  user            User         @relation(fields: [userId], references: [id])
+  id              String             @id @default(uuid())
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id])
   phone           String?
   publicEmail     String?
-  bmdcNumber      String?      @unique
+  bmdcNumber      String?            @unique
   qualifications  String?
   specialties     Specialty[]
   affiliation     String?
   city            City?
   experienceYears Int?
   feeBdt          Int?
-  status          DoctorStatus @default(draft)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  status          DoctorStatus       @default(draft)
+  slots           AvailabilitySlot[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@index([status])
   @@index([city])
+}
+
+/// Concrete, bookable time slot owned by a `DoctorProfile`. The availability
+/// editor materializes one row per toggled grid cell (no recurrence: every
+/// slot is an explicit row). `(doctorId, startTime)` is `@unique` so toggling
+/// the same cell twice cannot create duplicates. Slots stay removable while
+/// `open`; once `booked` by an `Appointment` they are locked.
+model AvailabilitySlot {
+  id        String        @id @default(uuid())
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  status    SlotStatus    @default(open)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([doctorId, startTime])
+  @@index([doctorId, status, startTime])
 }
 
 /// Patient's persistent standing health record (one per user).

@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { config, validateConfig } from "./config";
 import { errorHandler } from "./middlewares/errorHandler";
+import availabilityRoutes from "./routes/availabilityRoutes";
 import doctorRoutes from "./routes/doctorRoutes";
 import healthProfileRoutes from "./routes/healthProfileRoutes";
 import predictionRoutes from "./routes/predictionRoutes";
@@ -39,6 +40,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/v1", predictionRoutes);
 app.use("/api/v1", userRoutes);
 app.use("/api/v1", doctorRoutes);
+app.use("/api/v1", availabilityRoutes);
 app.use("/api/v1", healthProfileRoutes);
 
 app.use((_req, res) => {

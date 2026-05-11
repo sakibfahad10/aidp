@@ -5,13 +5,34 @@ import {
   prisma,
 } from "@disease-prediction/db";
 import type {
+  City,
   DirectoryQuery,
   DoctorOnboardingDraft,
   DoctorOnboardingSubmit,
+  Specialty,
 } from "@disease-prediction/shared";
 
 // Shared and Prisma enums (`Specialty`, `City`, `DoctorStatus`) share identical
 // string values, so a direct cast at the boundary is sound.
+
+/**
+ * Row shape returned by the directory + public-profile lookups. Always carries
+ * the doctor's currently `open` slots so callers can show bookability and so
+ * the directory can be ordered by `has-open-slot DESC, feeBdt ASC`.
+ */
+export interface PublicDoctorRow {
+  id: string;
+  userId: string;
+  name: string | null;
+  publicEmail: string | null;
+  qualifications: string | null;
+  specialties: Specialty[];
+  affiliation: string | null;
+  city: City | null;
+  experienceYears: number | null;
+  feeBdt: number | null;
+  openSlots: { id: string; startTime: Date }[];
+}
 
 export class DoctorRepository {
   async findByUserId(userId: string) {
@@ -43,16 +64,19 @@ export class DoctorRepository {
   }
 
   /**
-   * Public directory list. Always scoped to `verified` doctors (non-verified
-   * never appear) and ordered by fee ascending — the has-open-slot ordering
-   * factor lands with the availability slice.
+   * Public directory listing — verified doctors only, ordered by
+   * `has-open-slot DESC, feeBdt ASC` so bookable, cheaper doctors surface
+   * first. The has-open-slot factor is materialized here in JS rather than
+   * with a SQL window function: Prisma doesn't support ordering by a related
+   * count on `findMany`, and the directory result set is small enough that
+   * the post-sort is negligible.
    *
    * `specialty` matches when the doctor's `specialties` array contains it.
    * `city` is an exact enum match. `affiliation` is a case-insensitive
    * contains-match on free-text.
    */
-  async findVerifiedDirectory(query: DirectoryQuery) {
-    return prisma.doctorProfile.findMany({
+  async findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]> {
+    const rows = await prisma.doctorProfile.findMany({
       where: {
         status: "verified" as PrismaDoctorStatus,
         ...(query.specialty
@@ -63,9 +87,16 @@ export class DoctorRepository {
           ? { affiliation: { contains: query.affiliation, mode: "insensitive" as const } }
           : {}),
       },
-      orderBy: { feeBdt: "asc" },
-      include: { user: { select: { name: true } } },
+      include: {
+        user: { select: { name: true } },
+        slots: {
+          where: { status: "open" },
+          orderBy: { startTime: "asc" },
+          select: { id: true, startTime: true },
+        },
+      },
     });
+    return rows.map(toPublicRow).sort(compareForDirectory);
   }
 
   /**
@@ -73,11 +104,19 @@ export class DoctorRepository {
    * draft or pending profile with that id is indistinguishable from "no
    * such doctor" — non-verified profiles never leak.
    */
-  async findPublicById(id: string) {
-    return prisma.doctorProfile.findFirst({
+  async findPublicById(id: string): Promise<PublicDoctorRow | null> {
+    const row = await prisma.doctorProfile.findFirst({
       where: { id, status: "verified" as PrismaDoctorStatus },
-      include: { user: { select: { name: true } } },
+      include: {
+        user: { select: { name: true } },
+        slots: {
+          where: { status: "open" },
+          orderBy: { startTime: "asc" },
+          select: { id: true, startTime: true },
+        },
+      },
     });
+    return row ? toPublicRow(row) : null;
   }
 }
 
@@ -99,14 +138,49 @@ function toPrismaPatch(patch: Partial<DoctorOnboardingSubmit>) {
 }
 
 export type DoctorProfileRow = Awaited<ReturnType<DoctorRepository["findByUserId"]>>;
-export type DoctorProfileWithUserRow = Awaited<ReturnType<DoctorRepository["findPublicById"]>>;
 
 export type DoctorRepositoryLike = {
   findByUserId(userId: string): Promise<DoctorProfileRow>;
   upsertDraft(userId: string, patch: DoctorOnboardingDraft): Promise<NonNullable<DoctorProfileRow>>;
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
-  findVerifiedDirectory(
-    query: DirectoryQuery,
-  ): Promise<Awaited<ReturnType<DoctorRepository["findVerifiedDirectory"]>>>;
-  findPublicById(id: string): Promise<DoctorProfileWithUserRow>;
+  findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]>;
+  findPublicById(id: string): Promise<PublicDoctorRow | null>;
 };
+
+function toPublicRow(row: {
+  id: string;
+  userId: string;
+  publicEmail: string | null;
+  qualifications: string | null;
+  specialties: PrismaSpecialty[];
+  affiliation: string | null;
+  city: PrismaCity | null;
+  experienceYears: number | null;
+  feeBdt: number | null;
+  user: { name: string | null };
+  slots: { id: string; startTime: Date }[];
+}): PublicDoctorRow {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.user.name,
+    publicEmail: row.publicEmail,
+    qualifications: row.qualifications,
+    specialties: row.specialties as unknown as Specialty[],
+    affiliation: row.affiliation,
+    city: row.city as unknown as City | null,
+    experienceYears: row.experienceYears,
+    feeBdt: row.feeBdt,
+    openSlots: row.slots,
+  };
+}
+
+/** Directory order: `has-open-slot DESC, feeBdt ASC`. Exported for tests. */
+export function compareForDirectory(a: PublicDoctorRow, b: PublicDoctorRow): number {
+  const aBookable = a.openSlots.length > 0 ? 1 : 0;
+  const bBookable = b.openSlots.length > 0 ? 1 : 0;
+  if (aBookable !== bBookable) return bBookable - aBookable;
+  const aFee = a.feeBdt ?? Number.POSITIVE_INFINITY;
+  const bFee = b.feeBdt ?? Number.POSITIVE_INFINITY;
+  return aFee - bFee;
+}

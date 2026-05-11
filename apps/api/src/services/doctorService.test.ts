@@ -8,6 +8,7 @@ import {
 } from "@disease-prediction/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../middlewares/errorHandler";
+import { compareForDirectory, type PublicDoctorRow } from "../repositories/doctorRepository";
 import { DoctorService } from "./doctorService";
 
 type Stored = {
@@ -24,6 +25,7 @@ type Stored = {
   feeBdt: number | null;
   status: DoctorStatus;
   userName: string | null;
+  openSlots: { id: string; startTime: Date }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -32,23 +34,19 @@ function fakeRepo() {
   const byUser = new Map<string, Stored>();
   const seenBmdc = new Set<string>();
 
-  function toRow(s: Stored) {
+  function toPublicRow(s: Stored): PublicDoctorRow {
     return {
       id: s.id,
       userId: s.userId,
-      phone: s.phone,
+      name: s.userName,
       publicEmail: s.publicEmail,
-      bmdcNumber: s.bmdcNumber,
       qualifications: s.qualifications,
       specialties: s.specialties,
       affiliation: s.affiliation,
       city: s.city,
       experienceYears: s.experienceYears,
       feeBdt: s.feeBdt,
-      status: s.status,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-      user: { name: s.userName },
+      openSlots: s.openSlots,
     };
   }
 
@@ -76,6 +74,7 @@ function fakeRepo() {
         feeBdt: patch.feeBdt ?? existing?.feeBdt ?? null,
         status: existing?.status ?? DoctorStatus.DRAFT,
         userName: existing?.userName ?? null,
+        openSlots: existing?.openSlots ?? [],
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
@@ -95,6 +94,7 @@ function fakeRepo() {
         ...body,
         status: DoctorStatus.VERIFIED,
         userName: existing?.userName ?? null,
+        openSlots: existing?.openSlots ?? [],
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
@@ -111,16 +111,13 @@ function fakeRepo() {
         if (affil && !(s.affiliation ?? "").toLowerCase().includes(affil)) return false;
         return true;
       });
-      filtered.sort(
-        (a, b) => (a.feeBdt ?? Number.MAX_SAFE_INTEGER) - (b.feeBdt ?? Number.MAX_SAFE_INTEGER),
-      );
-      return filtered.map(toRow);
+      return filtered.map(toPublicRow).sort(compareForDirectory);
     }),
     findPublicById: vi.fn(async (id: string) => {
       const found = [...byUser.values()].find((s) => s.id === id);
       if (!found) return null;
       if (found.status !== DoctorStatus.VERIFIED) return null;
-      return toRow(found);
+      return toPublicRow(found);
     }),
   };
   return { repo, byUser, seenBmdc };
@@ -142,6 +139,7 @@ function seed(byUser: Map<string, Stored>, s: Partial<Stored> & { userId: string
     feeBdt: s.feeBdt ?? null,
     status: s.status ?? DoctorStatus.VERIFIED,
     userName: s.userName ?? null,
+    openSlots: s.openSlots ?? [],
     createdAt: now,
     updatedAt: now,
   });
@@ -171,6 +169,7 @@ describe("DoctorService.getByUserId", () => {
       feeBdt: 1200,
       status: DoctorStatus.DRAFT,
       userName: null,
+      openSlots: [],
       createdAt: now,
       updatedAt: now,
     });
@@ -212,6 +211,49 @@ describe("DoctorService.saveDraft", () => {
     await expect(svc.saveDraft("user_2", { bmdcNumber: "A-12345" })).rejects.toMatchObject({
       statusCode: 409,
     });
+  });
+});
+
+describe("compareForDirectory (has-open-slot then fee asc)", () => {
+  function row(id: string, feeBdt: number | null, openSlotCount: number): PublicDoctorRow {
+    return {
+      id,
+      userId: `u_${id}`,
+      name: id,
+      publicEmail: null,
+      qualifications: null,
+      specialties: [],
+      affiliation: null,
+      city: null,
+      experienceYears: null,
+      feeBdt,
+      openSlots: Array.from({ length: openSlotCount }, (_, i) => ({
+        id: `${id}_slot_${i}`,
+        startTime: new Date(`2026-06-15T0${i}:00:00.000Z`),
+      })),
+    };
+  }
+
+  it("places doctors with open slots ahead of those without — regardless of fee", () => {
+    const cheaper = row("a", 500, 0);
+    const bookable = row("b", 5000, 1);
+    const sorted = [cheaper, bookable].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  it("breaks has-open-slot ties by fee ascending", () => {
+    const expensive = row("a", 5000, 2);
+    const cheap = row("b", 500, 1);
+    const free = row("c", 0, 3);
+    const sorted = [expensive, cheap, free].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("treats a null fee as +infinity (sinks to the bottom of its bucket)", () => {
+    const nullFee = row("a", null, 1);
+    const cheap = row("b", 100, 1);
+    const sorted = [nullFee, cheap].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["b", "a"]);
   });
 });
 
@@ -317,7 +359,7 @@ describe("DoctorService.listDirectory", () => {
     expect(list[0]?.id).toBe("1");
   });
 
-  it("orders results by fee ascending", async () => {
+  it("orders results by fee ascending when nobody has open slots", async () => {
     const { repo, byUser } = fakeRepo();
     seed(byUser, { id: "1", userId: "u1", feeBdt: 1500 });
     seed(byUser, { id: "2", userId: "u2", feeBdt: 500 });
@@ -361,6 +403,20 @@ describe("DoctorService.getPublicProfile", () => {
     expect(profile?.name).toBe("Dr. Alice");
     expect(profile?.qualifications).toBe("MBBS, FCPS");
     expect(profile?.publicEmail).toBe("dr@example.com");
+    expect(profile?.openSlots).toEqual([]);
+  });
+
+  it("serializes open slots as ISO strings", async () => {
+    const { repo, byUser } = fakeRepo();
+    const slotStart = new Date("2026-06-15T10:00:00.000Z");
+    seed(byUser, {
+      id: "doc_1",
+      userId: "u1",
+      openSlots: [{ id: "slot_a", startTime: slotStart }],
+    });
+    const svc = new DoctorService(repo);
+    const profile = await svc.getPublicProfile("doc_1");
+    expect(profile?.openSlots).toEqual([{ id: "slot_a", startTime: slotStart.toISOString() }]);
   });
 
   it("returns null for a non-verified profile", async () => {

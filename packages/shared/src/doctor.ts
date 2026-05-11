@@ -183,9 +183,9 @@ export interface DoctorProfileResponse {
 
 /**
  * Query for the public verified-doctor directory. Every field optional —
- * an empty query lists every verified doctor (fee asc). `specialty` /
- * `city` are validated against the controlled vocabularies; `affiliation`
- * is a free-text contains-match.
+ * an empty query lists every verified doctor (has-open-slot DESC, fee ASC).
+ * `specialty` / `city` are validated against the controlled vocabularies;
+ * `affiliation` is a free-text contains-match.
  */
 export const directoryQuerySchema = z.object({
   specialty: specialtySchema.optional(),
@@ -217,10 +217,12 @@ export interface DirectoryDoctor {
 /**
  * The public profile of a verified doctor. Returned by
  * GET /api/v1/doctors/:id. Includes everything `DirectoryDoctor` carries
- * plus the qualifications string and the doctor's public contact email
- * (NOT the login email).
+ * plus the qualifications string, the doctor's public contact email (NOT
+ * the login email), and the currently open availability slots so the
+ * detail page can render bookability.
  */
 export interface PublicDoctorProfile extends DirectoryDoctor {
   qualifications: string | null;
   publicEmail: string | null;
+  openSlots: { id: string; startTime: string }[];
 }

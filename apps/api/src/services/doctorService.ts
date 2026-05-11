@@ -12,9 +12,9 @@ import {
 import { AppError } from "../middlewares/errorHandler";
 import {
   type DoctorProfileRow,
-  type DoctorProfileWithUserRow,
   DoctorRepository,
   type DoctorRepositoryLike,
+  type PublicDoctorRow,
 } from "../repositories/doctorRepository";
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -45,24 +45,25 @@ function toResponse(row: NonNullable<DoctorProfileRow>): DoctorProfileResponse {
   };
 }
 
-function toDirectoryRow(row: NonNullable<DoctorProfileWithUserRow>): DirectoryDoctor {
+function toDirectoryRow(row: PublicDoctorRow): DirectoryDoctor {
   return {
     id: row.id,
     userId: row.userId,
-    name: row.user?.name ?? null,
-    specialties: row.specialties as unknown as Specialty[],
+    name: row.name,
+    specialties: row.specialties,
     affiliation: row.affiliation,
-    city: row.city as unknown as City | null,
+    city: row.city,
     experienceYears: row.experienceYears,
     feeBdt: row.feeBdt,
   };
 }
 
-function toPublicProfile(row: NonNullable<DoctorProfileWithUserRow>): PublicDoctorProfile {
+function toPublicProfile(row: PublicDoctorRow): PublicDoctorProfile {
   return {
     ...toDirectoryRow(row),
     qualifications: row.qualifications,
     publicEmail: row.publicEmail,
+    openSlots: row.openSlots.map((s) => ({ id: s.id, startTime: s.startTime.toISOString() })),
   };
 }
 
@@ -105,8 +106,7 @@ export class DoctorService {
 
   /**
    * Public directory of verified doctors. Filters by specialty/city/affiliation
-   * and orders by fee ascending. The has-open-slot ordering factor lands with
-   * the availability slice.
+   * and orders by `has-open-slot DESC, feeBdt ASC` (applied by the repository).
    */
   async listDirectory(query: DirectoryQuery): Promise<DirectoryDoctor[]> {
     const rows = await this.repo.findVerifiedDirectory(query);
