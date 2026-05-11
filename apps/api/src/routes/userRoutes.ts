@@ -15,4 +15,13 @@ router.post(
   UserController.setRole,
 );
 
+// "Register as a patient" — additive opt-in for DOCTOR users. PATIENT users
+// already have the capability; service layer surfaces a 403 if they call
+// this. Empty body so no schema validation is needed.
+router.post(
+  "/users/enable-patient-capability",
+  requireApiAuth,
+  UserController.enablePatientCapability,
+);
+
 export default router;

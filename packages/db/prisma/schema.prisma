@@ -112,6 +112,11 @@ model User {
   /// PATIENT is the semantic default exposed through `DEFAULT_ROLE` in
   /// `@disease-prediction/shared`, applied by the gate / webhook, not by SQL.
   role          Role?
+  /// Additive flag: a DOCTOR can opt in to also being a patient (their own
+  /// HealthProfile, predictions, bookings) without losing the doctor side.
+  /// For role=PATIENT this is true (set on initial role assignment); for
+  /// role=DOCTOR it stays false until they hit "register as a patient".
+  patientCapability Boolean   @default(false)
   predictions   Prediction[]
   doctorProfile DoctorProfile?
   healthProfile HealthProfile?
