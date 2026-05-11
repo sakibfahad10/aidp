@@ -30,10 +30,39 @@ export type SetRoleRequest = z.infer<typeof setRoleRequestSchema>;
  *
  * `role` is nullable: a `null` here means the user has not picked through the
  * role gate yet, and the web app should route them to it.
+ *
+ * `patientCapability` is the additive doctor-also-a-patient flag. For
+ * `role === PATIENT` it is always true (set on initial role assignment); for
+ * `role === DOCTOR` it stays false until they hit "register as a patient".
  */
 export interface CurrentUserResponse {
   id: string;
   email: string;
   name: string | null;
   role: Role | null;
+  patientCapability: boolean;
+}
+
+/**
+ * True when the user can use patient-side features (HealthProfile, predict,
+ * history, booking). A `null` role means the gate hasn't been answered yet
+ * and the user has no capability of any kind.
+ */
+export function hasPatientCapability(
+  user: Pick<CurrentUserResponse, "role" | "patientCapability">,
+): boolean {
+  if (user.role === null) return false;
+  if (user.role === Role.PATIENT) return true;
+  return user.patientCapability === true;
+}
+
+/**
+ * True when the user has *both* a doctor and a patient surface, i.e. their
+ * primary role is DOCTOR and they've opted into patient capability. These
+ * are the users that get the doctor↔patient nav context switch.
+ */
+export function isDualRoleUser(
+  user: Pick<CurrentUserResponse, "role" | "patientCapability">,
+): boolean {
+  return user.role === Role.DOCTOR && user.patientCapability === true;
 }

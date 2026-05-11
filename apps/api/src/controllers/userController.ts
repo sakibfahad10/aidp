@@ -34,4 +34,18 @@ export class UserController {
       next(error);
     }
   }
+
+  static async enablePatientCapability(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const user = await userService.enablePatientCapability(userId);
+      res.json({ success: true, data: user, message: "Patient capability enabled" });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

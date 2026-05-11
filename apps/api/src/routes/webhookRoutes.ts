@@ -33,11 +33,16 @@ function roleFromMetadata(metadata: unknown): Role | undefined {
 
 function extractUserFields(data: ClerkUserData) {
   const primaryEmail = data.email_addresses.find((e) => e.id === data.primary_email_address_id);
+  const role = roleFromMetadata(data.public_metadata) ?? roleFromMetadata(data.unsafe_metadata);
   return {
     id: data.id,
     email: primaryEmail?.email_address ?? "",
     name: [data.first_name, data.last_name].filter(Boolean).join(" ") || null,
-    role: roleFromMetadata(data.public_metadata) ?? roleFromMetadata(data.unsafe_metadata),
+    role,
+    // PATIENT-from-metadata implies patient capability; DOCTOR users opt in
+    // later via /users/enable-patient-capability. No hint → leave undefined
+    // so create falls back to the column default (false).
+    patientCapability: role === Role.PATIENT ? true : undefined,
   };
 }
 
@@ -46,13 +51,20 @@ router.post("/webhooks/clerk", raw({ type: "application/json" }), async (req, re
     const evt = await verifyWebhook(req);
 
     if (evt.type === "user.created") {
-      const { id, email, name, role } = extractUserFields(evt.data as ClerkUserData);
-      await prisma.user.create({ data: { id, email, name, role } });
+      const { id, email, name, role, patientCapability } = extractUserFields(
+        evt.data as ClerkUserData,
+      );
+      await prisma.user.create({ data: { id, email, name, role, patientCapability } });
     }
 
     if (evt.type === "user.updated") {
-      const { id, email, name, role } = extractUserFields(evt.data as ClerkUserData);
-      await prisma.user.update({ where: { id }, data: { email, name, role } });
+      const { id, email, name, role, patientCapability } = extractUserFields(
+        evt.data as ClerkUserData,
+      );
+      await prisma.user.update({
+        where: { id },
+        data: { email, name, role, patientCapability },
+      });
     }
 
     res.status(200).json({ success: true });

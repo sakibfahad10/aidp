@@ -108,6 +108,15 @@ export async function setUserRole(
   });
 }
 
+export async function enablePatientCapability(
+  token: string | null,
+): Promise<ApiResponse<CurrentUserResponse>> {
+  return fetchApi<ApiResponse<CurrentUserResponse>>("/api/v1/users/enable-patient-capability", {
+    method: "POST",
+    token,
+  });
+}
+
 export async function getDoctorProfile(
   token: string | null,
 ): Promise<ApiResponse<DoctorProfileResponse | null>> {

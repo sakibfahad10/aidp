@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ROLE, Role, roleSchema, setRoleRequestSchema } from "./role";
+import {
+  DEFAULT_ROLE,
+  hasPatientCapability,
+  isDualRoleUser,
+  Role,
+  roleSchema,
+  setRoleRequestSchema,
+} from "./role";
 
 describe("Role", () => {
   it("exposes PATIENT and DOCTOR string values", () => {
@@ -41,5 +48,44 @@ describe("setRoleRequestSchema", () => {
 
   it("rejects a missing role", () => {
     expect(setRoleRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("hasPatientCapability", () => {
+  it("is true for a PATIENT regardless of the flag", () => {
+    expect(hasPatientCapability({ role: Role.PATIENT, patientCapability: false })).toBe(true);
+    expect(hasPatientCapability({ role: Role.PATIENT, patientCapability: true })).toBe(true);
+  });
+
+  it("is true for a DOCTOR who has opted into patient capability", () => {
+    expect(hasPatientCapability({ role: Role.DOCTOR, patientCapability: true })).toBe(true);
+  });
+
+  it("is false for a DOCTOR who has not opted in", () => {
+    expect(hasPatientCapability({ role: Role.DOCTOR, patientCapability: false })).toBe(false);
+  });
+
+  it("is false for a user whose role hasn't been chosen yet", () => {
+    expect(hasPatientCapability({ role: null, patientCapability: false })).toBe(false);
+    expect(hasPatientCapability({ role: null, patientCapability: true })).toBe(false);
+  });
+});
+
+describe("isDualRoleUser", () => {
+  it("is true only for a DOCTOR who has opted into patient capability", () => {
+    expect(isDualRoleUser({ role: Role.DOCTOR, patientCapability: true })).toBe(true);
+  });
+
+  it("is false for a single-role DOCTOR", () => {
+    expect(isDualRoleUser({ role: Role.DOCTOR, patientCapability: false })).toBe(false);
+  });
+
+  it("is false for a PATIENT (one-directional rule: doctors gain patient, not the other way)", () => {
+    expect(isDualRoleUser({ role: Role.PATIENT, patientCapability: true })).toBe(false);
+    expect(isDualRoleUser({ role: Role.PATIENT, patientCapability: false })).toBe(false);
+  });
+
+  it("is false when the role isn't chosen yet", () => {
+    expect(isDualRoleUser({ role: null, patientCapability: true })).toBe(false);
   });
 });
