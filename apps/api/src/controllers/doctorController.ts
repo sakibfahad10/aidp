@@ -1,9 +1,34 @@
 import { getAuth } from "@clerk/express";
-import type { DoctorOnboardingDraft, DoctorOnboardingSubmit } from "@disease-prediction/shared";
+import {
+  type City,
+  citySchema,
+  type DoctorOnboardingDraft,
+  type DoctorOnboardingSubmit,
+  type Specialty,
+  specialtySchema,
+} from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
 import { DoctorService } from "../services/doctorService";
 
 const doctorService = new DoctorService();
+
+function parseDirectoryFilters(query: Request["query"]): {
+  specialty?: Specialty;
+  city?: City;
+  affiliation?: string;
+} {
+  const specialtyRaw = typeof query.specialty === "string" ? query.specialty : undefined;
+  const cityRaw = typeof query.city === "string" ? query.city : undefined;
+  const affiliationRaw = typeof query.affiliation === "string" ? query.affiliation : undefined;
+
+  const specialty = specialtyRaw ? specialtySchema.safeParse(specialtyRaw) : undefined;
+  const city = cityRaw ? citySchema.safeParse(cityRaw) : undefined;
+  return {
+    specialty: specialty?.success ? specialty.data : undefined,
+    city: city?.success ? city.data : undefined,
+    affiliation: affiliationRaw?.trim() || undefined,
+  };
+}
 
 export class DoctorController {
   static async getMe(req: Request, res: Response, next: NextFunction) {
@@ -49,6 +74,36 @@ export class DoctorController {
         data: profile,
         message: "Doctor profile verified",
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Public directory listing. */
+  static async listDirectory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const filters = parseDirectoryFilters(req.query);
+      const doctors = await doctorService.listDirectory(filters);
+      res.json({ success: true, data: doctors });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Public profile by id — verified-only. */
+  static async publicProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id;
+      if (typeof id !== "string" || !id) {
+        res.status(400).json({ success: false, error: "Missing doctor id" });
+        return;
+      }
+      const profile = await doctorService.getPublicProfile(id);
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Doctor not found" });
+        return;
+      }
+      res.json({ success: true, data: profile });
     } catch (error) {
       next(error);
     }

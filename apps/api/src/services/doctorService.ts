@@ -4,13 +4,16 @@ import {
   type DoctorOnboardingSubmit,
   type DoctorProfileResponse,
   DoctorStatus,
+  type PublicDoctorProfile,
   type Specialty,
 } from "@disease-prediction/shared";
 import { AppError } from "../middlewares/errorHandler";
 import {
+  type DirectoryFilters,
   type DoctorProfileRow,
   DoctorRepository,
   type DoctorRepositoryLike,
+  type PublicDoctorRow,
 } from "../repositories/doctorRepository";
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -77,4 +80,31 @@ export class DoctorService {
       throw err;
     }
   }
+
+  /** Public directory — verified-only, ordered by has-open-slot then fee asc. */
+  async listDirectory(filters: DirectoryFilters = {}): Promise<PublicDoctorProfile[]> {
+    const rows = await this.repo.listVerified(filters);
+    return rows.map(toPublicResponse);
+  }
+
+  /** Public profile by doctor id (verified-only). */
+  async getPublicProfile(id: string): Promise<PublicDoctorProfile | null> {
+    const row = await this.repo.findVerifiedById(id);
+    return row ? toPublicResponse(row) : null;
+  }
+}
+
+function toPublicResponse(row: PublicDoctorRow): PublicDoctorProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    publicEmail: row.publicEmail,
+    qualifications: row.qualifications,
+    specialties: row.specialties,
+    affiliation: row.affiliation,
+    city: row.city,
+    experienceYears: row.experienceYears,
+    feeBdt: row.feeBdt,
+    openSlots: row.openSlots.map((s) => ({ id: s.id, startTime: s.startTime.toISOString() })),
+  };
 }

@@ -7,6 +7,7 @@ import {
 } from "@disease-prediction/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../middlewares/errorHandler";
+import { compareForDirectory, type PublicDoctorRow } from "../repositories/doctorRepository";
 import { DoctorService } from "./doctorService";
 
 type Stored = {
@@ -78,6 +79,8 @@ function fakeRepo() {
       seenBmdc.add(body.bmdcNumber);
       return next;
     }),
+    findVerifiedById: vi.fn(async () => null),
+    listVerified: vi.fn(async () => []),
   };
   return { repo, byUser, seenBmdc };
 }
@@ -146,6 +149,48 @@ describe("DoctorService.saveDraft", () => {
     await expect(svc.saveDraft("user_2", { bmdcNumber: "A-12345" })).rejects.toMatchObject({
       statusCode: 409,
     });
+  });
+});
+
+describe("compareForDirectory (has-open-slot then fee asc)", () => {
+  function row(id: string, feeBdt: number | null, openSlotCount: number): PublicDoctorRow {
+    return {
+      id,
+      name: id,
+      publicEmail: null,
+      qualifications: null,
+      specialties: [],
+      affiliation: null,
+      city: null,
+      experienceYears: null,
+      feeBdt,
+      openSlots: Array.from({ length: openSlotCount }, (_, i) => ({
+        id: `${id}_slot_${i}`,
+        startTime: new Date(`2026-06-15T0${i}:00:00.000Z`),
+      })),
+    };
+  }
+
+  it("places doctors with open slots ahead of those without — regardless of fee", () => {
+    const cheaper = row("a", 500, 0);
+    const bookable = row("b", 5000, 1);
+    const sorted = [cheaper, bookable].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  it("breaks has-open-slot ties by fee ascending", () => {
+    const expensive = row("a", 5000, 2);
+    const cheap = row("b", 500, 1);
+    const free = row("c", 0, 3);
+    const sorted = [expensive, cheap, free].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("treats a null fee as +infinity (sinks to the bottom of its bucket)", () => {
+    const nullFee = row("a", null, 1);
+    const cheap = row("b", 100, 1);
+    const sorted = [nullFee, cheap].sort(compareForDirectory);
+    expect(sorted.map((r) => r.id)).toEqual(["b", "a"]);
   });
 });
 

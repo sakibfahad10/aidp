@@ -180,3 +180,21 @@ export interface DoctorProfileResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Public shape used by the directory and the public profile page. Strips the
+ * `phone` and `bmdcNumber` fields and always carries the doctor's currently
+ * open availability so the listing can mark a row as bookable at a glance.
+ */
+export interface PublicDoctorProfile {
+  id: string;
+  name: string | null;
+  publicEmail: string | null;
+  qualifications: string | null;
+  specialties: Specialty[];
+  affiliation: string | null;
+  city: City | null;
+  experienceYears: number | null;
+  feeBdt: number | null;
+  openSlots: { id: string; startTime: string }[];
+}

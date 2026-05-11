@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  AvailabilitySlot,
   CurrentUserResponse,
   DoctorOnboardingDraft,
   DoctorOnboardingSubmit,
@@ -8,7 +9,9 @@ import type {
   PaginatedResponse,
   Prediction,
   PredictRequest,
+  PublicDoctorProfile,
   Role,
+  ToggleAvailabilitySlotResult,
   UpdateHealthProfileRequest,
 } from "@disease-prediction/shared";
 
@@ -134,6 +137,45 @@ export async function submitDoctorOnboarding(
     body: JSON.stringify(body),
     token,
   });
+}
+
+export async function getOwnAvailability(
+  token: string | null,
+): Promise<ApiResponse<AvailabilitySlot[]>> {
+  return fetchApi<ApiResponse<AvailabilitySlot[]>>("/api/v1/doctors/me/availability", { token });
+}
+
+export async function toggleAvailabilitySlot(
+  startTime: string,
+  token: string | null,
+): Promise<ApiResponse<ToggleAvailabilitySlotResult>> {
+  return fetchApi<ApiResponse<ToggleAvailabilitySlotResult>>(
+    "/api/v1/doctors/me/availability/toggle",
+    {
+      method: "POST",
+      body: JSON.stringify({ startTime }),
+      token,
+    },
+  );
+}
+
+export async function getDoctorDirectory(filters?: {
+  specialty?: string;
+  city?: string;
+  affiliation?: string;
+}): Promise<ApiResponse<PublicDoctorProfile[]>> {
+  const params = new URLSearchParams();
+  if (filters?.specialty) params.set("specialty", filters.specialty);
+  if (filters?.city) params.set("city", filters.city);
+  if (filters?.affiliation) params.set("affiliation", filters.affiliation);
+  const qs = params.toString();
+  return fetchApi<ApiResponse<PublicDoctorProfile[]>>(`/api/v1/doctors${qs ? `?${qs}` : ""}`);
+}
+
+export async function getPublicDoctorProfile(
+  id: string,
+): Promise<ApiResponse<PublicDoctorProfile>> {
+  return fetchApi<ApiResponse<PublicDoctorProfile>>(`/api/v1/doctors/${id}`);
 }
 
 export async function getHealthProfile(token: string | null): Promise<ApiResponse<HealthProfile>> {

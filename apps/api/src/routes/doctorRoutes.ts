@@ -13,6 +13,8 @@ const router = Router();
 
 const doctorOnly = requireRole(Role.DOCTOR);
 
+router.get("/doctors", DoctorController.listDirectory);
+
 router.get("/doctors/me", requireApiAuth, doctorOnly, DoctorController.getMe);
 
 router.put(
@@ -30,5 +32,7 @@ router.post(
   validateBody(doctorOnboardingSubmitSchema),
   DoctorController.submit,
 );
+
+router.get("/doctors/:id", DoctorController.publicProfile);
 
 export default router;
