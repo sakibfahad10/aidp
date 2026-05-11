@@ -164,11 +164,7 @@ function toPublicRow(row: {
   };
 }
 
-/**
- * Directory order: `has-open-slot DESC, feeBdt ASC` — exposed so the
- * matcher can apply the same comparison to a pre-filtered candidate set
- * without re-querying.
- */
+/** Directory order: `has-open-slot DESC, feeBdt ASC`. Exported for tests. */
 export function compareForDirectory(a: PublicDoctorRow, b: PublicDoctorRow): number {
   const aBookable = a.openSlots.length > 0 ? 1 : 0;
   const bBookable = b.openSlots.length > 0 ? 1 : 0;

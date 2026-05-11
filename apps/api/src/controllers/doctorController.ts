@@ -1,32 +1,25 @@
 import { getAuth } from "@clerk/express";
 import {
-  type City,
   citySchema,
   type DoctorOnboardingDraft,
   type DoctorOnboardingSubmit,
-  type Specialty,
   specialtySchema,
 } from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
+import type { DirectoryFilters } from "../repositories/doctorRepository";
 import { DoctorService } from "../services/doctorService";
 
 const doctorService = new DoctorService();
 
-function parseDirectoryFilters(query: Request["query"]): {
-  specialty?: Specialty;
-  city?: City;
-  affiliation?: string;
-} {
-  const specialtyRaw = typeof query.specialty === "string" ? query.specialty : undefined;
-  const cityRaw = typeof query.city === "string" ? query.city : undefined;
-  const affiliationRaw = typeof query.affiliation === "string" ? query.affiliation : undefined;
-
-  const specialty = specialtyRaw ? specialtySchema.safeParse(specialtyRaw) : undefined;
-  const city = cityRaw ? citySchema.safeParse(cityRaw) : undefined;
+function parseDirectoryFilters(query: Request["query"]): DirectoryFilters {
+  const specialty =
+    typeof query.specialty === "string" ? specialtySchema.safeParse(query.specialty) : undefined;
+  const city = typeof query.city === "string" ? citySchema.safeParse(query.city) : undefined;
+  const affiliation = typeof query.affiliation === "string" ? query.affiliation.trim() : "";
   return {
     specialty: specialty?.success ? specialty.data : undefined,
     city: city?.success ? city.data : undefined,
-    affiliation: affiliationRaw?.trim() || undefined,
+    affiliation: affiliation || undefined,
   };
 }
 

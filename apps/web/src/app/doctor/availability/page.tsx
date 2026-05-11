@@ -46,6 +46,48 @@ function isoKey(date: Date): string {
   return date.toISOString();
 }
 
+type CellState = "free" | "open" | "booked";
+
+function cellStateFor(slot: AvailabilitySlot | undefined): CellState {
+  if (slot?.status === SlotStatus.BOOKED) return "booked";
+  if (slot?.status === SlotStatus.OPEN) return "open";
+  return "free";
+}
+
+function cellLabel(state: CellState): string {
+  switch (state) {
+    case "booked":
+      return "Booked";
+    case "open":
+      return "Open";
+    case "free":
+      return "Free";
+  }
+}
+
+function ariaLabelFor(state: CellState, time: Date): string {
+  const iso = time.toISOString();
+  switch (state) {
+    case "booked":
+      return `Booked slot at ${iso}`;
+    case "open":
+      return `Remove slot at ${iso}`;
+    case "free":
+      return `Add slot at ${iso}`;
+  }
+}
+
+const CELL_BASE = "h-9 w-full rounded-md border text-xs transition-colors";
+const CELL_STATE_CLASSES: Record<CellState, string> = {
+  booked: "cursor-not-allowed border-orange-300 bg-orange-100 text-orange-700",
+  open: "border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
+  free: "border-muted bg-muted/30 text-muted-foreground hover:bg-muted",
+};
+
+function cellClassName(state: CellState, isPending: boolean): string {
+  return [CELL_BASE, CELL_STATE_CLASSES[state], isPending ? "opacity-60" : ""].join(" ");
+}
+
 export default function DoctorAvailabilityPage() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [slots, setSlots] = useState<Map<string, AvailabilitySlot>>(new Map());
@@ -183,35 +225,22 @@ export default function DoctorAvailabilityPage() {
                       const time = cellTime(weekStart, dayOffset, hour);
                       const key = isoKey(time);
                       const slot = slots.get(key);
-                      const isOpen = slot?.status === SlotStatus.OPEN;
-                      const isBooked = slot?.status === SlotStatus.BOOKED;
+                      const cellState = cellStateFor(slot);
                       const isPending = pending.has(key);
-                      const label = isBooked ? "Booked" : isOpen ? "Open" : "Free";
-                      const aria = isBooked
-                        ? `Booked slot at ${time.toISOString()}`
-                        : `${isOpen ? "Remove" : "Add"} slot at ${time.toISOString()}`;
                       return (
                         <td key={key} className="p-0">
                           <button
                             type="button"
-                            aria-label={aria}
-                            aria-pressed={isOpen}
-                            disabled={isBooked || isPending}
+                            aria-label={ariaLabelFor(cellState, time)}
+                            aria-pressed={cellState === "open"}
+                            disabled={cellState === "booked" || isPending}
                             onClick={() => void onToggleCell(time)}
-                            className={[
-                              "h-9 w-full rounded-md border text-xs transition-colors",
-                              isBooked
-                                ? "cursor-not-allowed border-orange-300 bg-orange-100 text-orange-700"
-                                : isOpen
-                                  ? "border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                                  : "border-muted bg-muted/30 text-muted-foreground hover:bg-muted",
-                              isPending ? "opacity-60" : "",
-                            ].join(" ")}
+                            className={cellClassName(cellState, isPending)}
                           >
                             {isPending ? (
                               <Loader2 className="mx-auto h-3 w-3 animate-spin" />
                             ) : (
-                              label
+                              cellLabel(cellState)
                             )}
                           </button>
                         </td>

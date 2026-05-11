@@ -15,22 +15,20 @@ export interface AvailabilitySlotRow {
   updatedAt: Date;
 }
 
-function toRow(row: {
+// Shared and Prisma `SlotStatus` share identical string values, so the
+// enum can be cast at the boundary without remapping — matching the
+// convention used in `doctorRepository.ts`.
+type PrismaSlotRow = {
   id: string;
   doctorId: string;
   startTime: Date;
   status: PrismaSlotStatus;
   createdAt: Date;
   updatedAt: Date;
-}): AvailabilitySlotRow {
-  return {
-    id: row.id,
-    doctorId: row.doctorId,
-    startTime: row.startTime,
-    status: row.status as unknown as SlotStatus,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+};
+
+function toRow(row: PrismaSlotRow): AvailabilitySlotRow {
+  return { ...row, status: row.status as unknown as SlotStatus };
 }
 
 export class AvailabilityRepository {
