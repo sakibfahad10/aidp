@@ -1,7 +1,21 @@
-import { type AIPredictionResponse, RiskLevel } from "@disease-prediction/shared";
-import { AlertTriangle, CheckCircle2, FileWarning, Shield, Stethoscope } from "lucide-react";
+import {
+  type AIPredictionResponse,
+  type DoctorSuggestion,
+  RiskLevel,
+} from "@disease-prediction/shared";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileWarning,
+  Shield,
+  Stethoscope,
+  UserRound,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDoctorSuggestions } from "@/lib/api";
 
 interface PredictionResultCardProps {
   result: AIPredictionResponse;
@@ -23,6 +37,7 @@ const riskBadgeVariant = {
 
 export function PredictionResultCard({ result }: PredictionResultCardProps) {
   const RiskIcon = riskIcons[result.riskLevel] || Shield;
+  const suggestions = useDoctorSuggestions(result.recommendedSpecialties ?? []);
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -106,6 +121,54 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
         </Card>
       )}
 
+      {/* Suggested Doctors */}
+      {suggestions.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <UserRound className="h-5 w-5 text-primary" />
+              Suggested Doctors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {suggestions.map((doc) => {
+                // Each suggestion deep-links into the directory pre-filtered by
+                // the first matched specialty — the matcher guarantees this
+                // array is non-empty.
+                const primarySpecialty = doc.matchedSpecialties[0];
+                if (!primarySpecialty) return null;
+                const deepLink = `/doctors?specialty=${encodeURIComponent(primarySpecialty)}`;
+                return (
+                  <li
+                    key={doc.id}
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors duration-200"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {doc.name ?? "Verified doctor"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {doc.matchedSpecialties.join(", ")}
+                        {doc.affiliation ? ` · ${doc.affiliation}` : ""}
+                        {doc.city ? ` · ${doc.city}` : ""}
+                        {doc.feeBdt !== null ? ` · ৳${doc.feeBdt}` : ""}
+                      </p>
+                    </div>
+                    <Link
+                      href={deepLink}
+                      className="text-xs font-medium text-primary hover:underline flex-shrink-0"
+                    >
+                      View {primarySpecialty} →
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Disclaimer */}
       <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
         <p className="text-xs text-amber-400/80 text-center">
@@ -115,4 +178,33 @@ export function PredictionResultCard({ result }: PredictionResultCardProps) {
       </div>
     </div>
   );
+}
+
+function useDoctorSuggestions(
+  recommendedSpecialties: AIPredictionResponse["recommendedSpecialties"],
+): DoctorSuggestion[] {
+  const [suggestions, setSuggestions] = useState<DoctorSuggestion[]>([]);
+  // Stable key for the dependency array — the array identity changes every
+  // render even when the contents are the same.
+  const key = recommendedSpecialties.join("|");
+  useEffect(() => {
+    let cancelled = false;
+    const specialties = key
+      ? (key.split("|") as AIPredictionResponse["recommendedSpecialties"])
+      : [];
+    getDoctorSuggestions(specialties)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data) setSuggestions(res.data);
+      })
+      .catch(() => {
+        // The suggestion section is purely additive — a failure should never
+        // block the user from seeing their prediction. Silently hide.
+        if (!cancelled) setSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+  return suggestions;
 }

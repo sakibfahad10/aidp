@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Specialty } from "./doctor";
 import { InputType, RiskLevel } from "./types";
 
 /** Schema for symptom-based input */
@@ -54,6 +55,25 @@ export const predictRequestSchema = z.discriminatedUnion("inputType", [
   }),
 ]);
 
+const ALLOWED_SPECIALTIES = new Set<string>(Object.values(Specialty));
+
+/**
+ * Tolerant decoder for `recommendedSpecialties` (per ADR 0003): missing →
+ * `[]`, non-array → `[]`, and unknown values inside an array are silently
+ * dropped instead of failing the whole prediction parse. This way legacy
+ * `Prediction` rows without the field and imperfect model output never break
+ * `parseAiResponse`.
+ */
+const recommendedSpecialtiesField = z
+  .unknown()
+  .optional()
+  .transform((value) => {
+    if (!Array.isArray(value)) return [] as Specialty[];
+    return value.filter(
+      (entry): entry is Specialty => typeof entry === "string" && ALLOWED_SPECIALTIES.has(entry),
+    );
+  });
+
 /** Schema for the AI prediction response */
 export const aiPredictionResponseSchema = z.object({
   riskLevel: z.nativeEnum(RiskLevel),
@@ -67,6 +87,7 @@ export const aiPredictionResponseSchema = z.object({
   summary: z.string(),
   recommendation: z.string(),
   redFlags: z.array(z.string()),
+  recommendedSpecialties: recommendedSpecialtiesField,
 });
 
 export type PredictRequestInput = z.infer<typeof predictRequestSchema>;

@@ -11,6 +11,7 @@ import type {
   DoctorOnboardingSubmit,
   Specialty,
 } from "@disease-prediction/shared";
+import type { SuggestionCandidate } from "../services/suggestionMatcher";
 
 // Shared and Prisma enums (`Specialty`, `City`, `DoctorStatus`) share identical
 // string values, so a direct cast at the boundary is sound.
@@ -100,6 +101,35 @@ export class DoctorRepository {
   }
 
   /**
+   * Verified-doctor candidates for the AI suggestion matcher. We project to
+   * the matcher's `SuggestionCandidate` shape here (precomputed `hasOpenSlot`,
+   * no per-slot detail) so the matcher can stay pure and database-free.
+   *
+   * Scoped to `status: verified` at the query level — non-verified rows are
+   * never considered as suggestions.
+   */
+  async findVerifiedForSuggestions(): Promise<SuggestionCandidate[]> {
+    const rows = await prisma.doctorProfile.findMany({
+      where: { status: "verified" as PrismaDoctorStatus },
+      include: {
+        user: { select: { name: true } },
+        slots: { where: { status: "open" }, select: { id: true }, take: 1 },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      name: row.user.name,
+      specialties: row.specialties as unknown as Specialty[],
+      affiliation: row.affiliation,
+      city: row.city as unknown as City | null,
+      experienceYears: row.experienceYears,
+      feeBdt: row.feeBdt,
+      hasOpenSlot: row.slots.length > 0,
+    }));
+  }
+
+  /**
    * Public profile lookup. Scoped to `verified` at the query level so a
    * draft or pending profile with that id is indistinguishable from "no
    * such doctor" — non-verified profiles never leak.
@@ -145,6 +175,7 @@ export type DoctorRepositoryLike = {
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
   findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]>;
   findPublicById(id: string): Promise<PublicDoctorRow | null>;
+  findVerifiedForSuggestions(): Promise<SuggestionCandidate[]>;
 };
 
 function toPublicRow(row: {

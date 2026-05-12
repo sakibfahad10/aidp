@@ -18,6 +18,10 @@ const doctorOnly = requireRole(Role.DOCTOR);
 // from a prediction result should land without an auth wall.
 router.get("/doctors", DoctorController.listDirectory);
 
+// AI suggestion endpoint — declared before /doctors/:id so the literal path
+// never matches the wildcard. Public for the same reason as the directory.
+router.get("/doctor-suggestions", DoctorController.getSuggestions);
+
 router.get("/doctors/me", requireApiAuth, doctorOnly, DoctorController.getMe);
 
 router.put(

@@ -119,6 +119,21 @@ function fakeRepo() {
       if (found.status !== DoctorStatus.VERIFIED) return null;
       return toPublicRow(found);
     }),
+    findVerifiedForSuggestions: vi.fn(async () => {
+      return [...byUser.values()]
+        .filter((s) => s.status === DoctorStatus.VERIFIED)
+        .map((s) => ({
+          id: s.id,
+          userId: s.userId,
+          name: s.userName,
+          specialties: s.specialties,
+          affiliation: s.affiliation,
+          city: s.city,
+          experienceYears: s.experienceYears,
+          feeBdt: s.feeBdt,
+          hasOpenSlot: s.openSlots.length > 0,
+        }));
+    }),
   };
   return { repo, byUser, seenBmdc };
 }
@@ -379,6 +394,59 @@ describe("DoctorService.listDirectory", () => {
     expect(row.bmdcNumber).toBeUndefined();
     expect(row.publicEmail).toBeUndefined();
     expect(row.status).toBeUndefined();
+  });
+});
+
+describe("DoctorService.getSuggestions", () => {
+  it("ranks verified candidates by specialty overlap (matcher integration)", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "cardio",
+      userId: "u_cardio",
+      specialties: [Specialty.Cardiology],
+      feeBdt: 1500,
+    });
+    seed(byUser, {
+      id: "derm",
+      userId: "u_derm",
+      specialties: [Specialty.Dermatology],
+      feeBdt: 800,
+    });
+    const svc = new DoctorService(repo);
+    const result = await svc.getSuggestions([Specialty.Cardiology]);
+    expect(result.map((r) => r.id)).toEqual(["cardio"]);
+    expect(result[0]?.matchedSpecialties).toEqual([Specialty.Cardiology]);
+  });
+
+  it("falls back to GeneralMedicine when nothing else matches", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "general",
+      userId: "u_general",
+      specialties: [Specialty.GeneralMedicine],
+      feeBdt: 500,
+    });
+    seed(byUser, {
+      id: "ent",
+      userId: "u_ent",
+      specialties: [Specialty.ENT],
+      feeBdt: 500,
+    });
+    const svc = new DoctorService(repo);
+    const result = await svc.getSuggestions([Specialty.Cardiology]);
+    expect(result.map((r) => r.id)).toEqual(["general"]);
+  });
+
+  it("excludes non-verified doctors from candidates", async () => {
+    const { repo, byUser } = fakeRepo();
+    seed(byUser, {
+      id: "draft",
+      userId: "u_draft",
+      specialties: [Specialty.Cardiology],
+      status: DoctorStatus.DRAFT,
+    });
+    const svc = new DoctorService(repo);
+    expect(await svc.getSuggestions([Specialty.Cardiology])).toEqual([]);
   });
 });
 
