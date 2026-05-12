@@ -1,6 +1,9 @@
 import type {
   ApiResponse,
+  Appointment,
+  AppointmentListResponse,
   AvailabilitySlot,
+  BookSlotRequest,
   CurrentUserResponse,
   DirectoryDoctor,
   DirectoryQuery,
@@ -198,6 +201,31 @@ export async function updateHealthProfile(
   return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", {
     method: "PATCH",
     body: JSON.stringify(update),
+    token,
+  });
+}
+
+export async function bookAppointment(
+  body: BookSlotRequest,
+  token: string | null,
+): Promise<ApiResponse<Appointment>> {
+  return fetchApi<ApiResponse<Appointment>>("/api/v1/appointments", {
+    method: "POST",
+    body: JSON.stringify(body),
+    token,
+  });
+}
+
+export async function getMyAppointments(
+  token: string | null,
+): Promise<ApiResponse<AppointmentListResponse>> {
+  return fetchApi<ApiResponse<AppointmentListResponse>>("/api/v1/appointments", { token });
+}
+
+export async function getDoctorAppointments(
+  token: string | null,
+): Promise<ApiResponse<AppointmentListResponse>> {
+  return fetchApi<ApiResponse<AppointmentListResponse>>("/api/v1/doctors/me/appointments", {
     token,
   });
 }

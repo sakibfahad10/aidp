@@ -120,6 +120,7 @@ model User {
   predictions   Prediction[]
   doctorProfile DoctorProfile?
   healthProfile HealthProfile?
+  appointments  Appointment[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -142,6 +143,7 @@ model DoctorProfile {
   feeBdt          Int?
   status          DoctorStatus       @default(draft)
   slots           AvailabilitySlot[]
+  appointments    Appointment[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -155,16 +157,40 @@ model DoctorProfile {
 /// the same cell twice cannot create duplicates. Slots stay removable while
 /// `open`; once `booked` by an `Appointment` they are locked.
 model AvailabilitySlot {
-  id        String        @id @default(uuid())
-  doctorId  String
-  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  startTime DateTime
-  status    SlotStatus    @default(open)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          String        @id @default(uuid())
+  doctorId    String
+  doctor      DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startTime   DateTime
+  status      SlotStatus    @default(open)
+  appointment Appointment?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@unique([doctorId, startTime])
   @@index([doctorId, status, startTime])
+}
+
+/// The booking link between a patient (User) and a doctor (DoctorProfile),
+/// pinned to one concrete `AvailabilitySlot`. `slotId @unique` is the
+/// database-level guard against double-booking the same slot — even if two
+/// patients race the booking transaction, only one Appointment row can
+/// survive. `note` is the optional patient-supplied reason for visit.
+///
+/// Upcoming vs past is derived at read time by comparing the joined
+/// `AvailabilitySlot.startTime` to `now()`; no stored status column.
+model Appointment {
+  id        String           @id @default(uuid())
+  patientId String
+  patient   User             @relation(fields: [patientId], references: [id])
+  doctorId  String
+  doctor    DoctorProfile    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  slotId    String           @unique
+  slot      AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  note      String?
+  createdAt DateTime         @default(now())
+
+  @@index([patientId])
+  @@index([doctorId])
 }
 
 /// Patient's persistent standing health record (one per user).

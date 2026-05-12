@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { config, validateConfig } from "./config";
 import { errorHandler } from "./middlewares/errorHandler";
+import appointmentRoutes from "./routes/appointmentRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
 import doctorRoutes from "./routes/doctorRoutes";
 import healthProfileRoutes from "./routes/healthProfileRoutes";
@@ -39,6 +40,11 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/v1", predictionRoutes);
 app.use("/api/v1", userRoutes);
+// Mount appointment routes before doctorRoutes — the doctor router declares a
+// catch-all `/doctors/:id`, and even though Express's single-segment param
+// can't match `/doctors/me/appointments`, keeping appointment routes first
+// is a belt-and-braces guard against future shape drift.
+app.use("/api/v1", appointmentRoutes);
 app.use("/api/v1", doctorRoutes);
 app.use("/api/v1", availabilityRoutes);
 app.use("/api/v1", healthProfileRoutes);

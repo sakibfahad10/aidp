@@ -6,6 +6,7 @@ import {
   Activity,
   ArrowLeftRight,
   Brain,
+  CalendarCheck,
   History,
   LogIn,
   Stethoscope,
@@ -43,12 +44,16 @@ const directoryItem = { href: "/doctors", label: "Doctors", icon: Stethoscope };
 const patientItems = [
   { href: "/predict", label: "Predict", icon: Brain },
   { href: "/history", label: "History", icon: History },
+  { href: "/appointments", label: "Appointments", icon: CalendarCheck },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
 // Doctor surface is currently the onboarding/dashboard-stub page; later
 // PRD #9 slices replace this with a proper dashboard route.
-const doctorItems = [{ href: "/doctor/onboarding", label: "Dashboard", icon: Stethoscope }];
+const doctorItems = [
+  { href: "/doctor/onboarding", label: "Dashboard", icon: Stethoscope },
+  { href: "/doctor/appointments", label: "Appointments", icon: CalendarCheck },
+];
 
 export function Navbar() {
   const pathname = usePathname();
