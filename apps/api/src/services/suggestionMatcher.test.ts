@@ -1,6 +1,6 @@
-import { FALLBACK_SPECIALTY, Specialty } from "@disease-prediction/shared";
+import { type DoctorSuggestion, FALLBACK_SPECIALTY, Specialty } from "@disease-prediction/shared";
 import { describe, expect, it } from "vitest";
-import { type SuggestionCandidate, type SuggestionRow, suggestDoctors } from "./suggestionMatcher";
+import { type SuggestionCandidate, suggestDoctors } from "./suggestionMatcher";
 
 function candidate(overrides: Partial<SuggestionCandidate> & { id: string }): SuggestionCandidate {
   return {
@@ -16,7 +16,7 @@ function candidate(overrides: Partial<SuggestionCandidate> & { id: string }): Su
   };
 }
 
-function ids(rows: SuggestionRow[]): string[] {
+function ids(rows: DoctorSuggestion[]): string[] {
   return rows.map((r) => r.id);
 }
 

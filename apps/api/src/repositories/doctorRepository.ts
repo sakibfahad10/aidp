@@ -11,26 +11,10 @@ import type {
   DoctorOnboardingSubmit,
   Specialty,
 } from "@disease-prediction/shared";
+import type { SuggestionCandidate } from "../services/suggestionMatcher";
 
 // Shared and Prisma enums (`Specialty`, `City`, `DoctorStatus`) share identical
 // string values, so a direct cast at the boundary is sound.
-
-/**
- * Projection consumed by the suggestion matcher — collapses the open-slot
- * relation down to a precomputed boolean so the matcher stays pure and the
- * over-the-wire row shape lines up with `DoctorSuggestion` in shared.
- */
-export interface SuggestionCandidateRow {
-  id: string;
-  userId: string;
-  name: string | null;
-  specialties: Specialty[];
-  affiliation: string | null;
-  city: City | null;
-  experienceYears: number | null;
-  feeBdt: number | null;
-  hasOpenSlot: boolean;
-}
 
 /**
  * Row shape returned by the directory + public-profile lookups. Always carries
@@ -124,7 +108,7 @@ export class DoctorRepository {
    * Scoped to `status: verified` at the query level — non-verified rows are
    * never considered as suggestions.
    */
-  async findVerifiedForSuggestions(): Promise<SuggestionCandidateRow[]> {
+  async findVerifiedForSuggestions(): Promise<SuggestionCandidate[]> {
     const rows = await prisma.doctorProfile.findMany({
       where: { status: "verified" as PrismaDoctorStatus },
       include: {
@@ -191,7 +175,7 @@ export type DoctorRepositoryLike = {
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
   findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]>;
   findPublicById(id: string): Promise<PublicDoctorRow | null>;
-  findVerifiedForSuggestions(): Promise<SuggestionCandidateRow[]>;
+  findVerifiedForSuggestions(): Promise<SuggestionCandidate[]>;
 };
 
 function toPublicRow(row: {

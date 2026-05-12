@@ -16,13 +16,6 @@ import {
 export type SuggestionCandidate = Omit<DoctorSuggestion, "matchedSpecialties">;
 
 /**
- * A matched candidate plus the subset of specialties that drove the match —
- * useful for rendering "Recommended because: Cardiology" on the result card,
- * and for the deep-link target (one link per matched specialty).
- */
-export type SuggestionRow = DoctorSuggestion;
-
-/**
  * Rank verified candidate doctors against a prediction's
  * `recommendedSpecialties`. Pure & unit-tested.
  *
@@ -42,7 +35,7 @@ export type SuggestionRow = DoctorSuggestion;
 export function suggestDoctors(
   recommendedSpecialties: Specialty[],
   candidates: SuggestionCandidate[],
-): SuggestionRow[] {
+): DoctorSuggestion[] {
   const matched = matchAgainst(recommendedSpecialties, candidates);
   if (matched.length > 0) return matched.sort(compareSuggestion);
   if (recommendedSpecialties.length === 1 && recommendedSpecialties[0] === FALLBACK_SPECIALTY) {
@@ -52,10 +45,10 @@ export function suggestDoctors(
   return matchAgainst([FALLBACK_SPECIALTY], candidates).sort(compareSuggestion);
 }
 
-function matchAgainst(wanted: Specialty[], candidates: SuggestionCandidate[]): SuggestionRow[] {
+function matchAgainst(wanted: Specialty[], candidates: SuggestionCandidate[]): DoctorSuggestion[] {
   const wantedSet = new Set(wanted);
   if (wantedSet.size === 0) return [];
-  const rows: SuggestionRow[] = [];
+  const rows: DoctorSuggestion[] = [];
   for (const c of candidates) {
     const matchedSpecialties = c.specialties.filter((s) => wantedSet.has(s));
     if (matchedSpecialties.length === 0) continue;
@@ -64,7 +57,7 @@ function matchAgainst(wanted: Specialty[], candidates: SuggestionCandidate[]): S
   return rows;
 }
 
-function compareSuggestion(a: SuggestionRow, b: SuggestionRow): number {
+function compareSuggestion(a: DoctorSuggestion, b: DoctorSuggestion): number {
   if (a.matchedSpecialties.length !== b.matchedSpecialties.length) {
     return b.matchedSpecialties.length - a.matchedSpecialties.length;
   }

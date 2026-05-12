@@ -55,6 +55,8 @@ export const predictRequestSchema = z.discriminatedUnion("inputType", [
   }),
 ]);
 
+const ALLOWED_SPECIALTIES = new Set<string>(Object.values(Specialty));
+
 /**
  * Tolerant decoder for `recommendedSpecialties` (per ADR 0003): missing →
  * `[]`, non-array → `[]`, and unknown values inside an array are silently
@@ -67,9 +69,8 @@ const recommendedSpecialtiesField = z
   .optional()
   .transform((value) => {
     if (!Array.isArray(value)) return [] as Specialty[];
-    const allowed = Object.values(Specialty) as string[];
     return value.filter(
-      (entry): entry is Specialty => typeof entry === "string" && allowed.includes(entry),
+      (entry): entry is Specialty => typeof entry === "string" && ALLOWED_SPECIALTIES.has(entry),
     );
   });
 
