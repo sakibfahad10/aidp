@@ -16,6 +16,23 @@ import type {
 // string values, so a direct cast at the boundary is sound.
 
 /**
+ * Projection consumed by the suggestion matcher — collapses the open-slot
+ * relation down to a precomputed boolean so the matcher stays pure and the
+ * over-the-wire row shape lines up with `DoctorSuggestion` in shared.
+ */
+export interface SuggestionCandidateRow {
+  id: string;
+  userId: string;
+  name: string | null;
+  specialties: Specialty[];
+  affiliation: string | null;
+  city: City | null;
+  experienceYears: number | null;
+  feeBdt: number | null;
+  hasOpenSlot: boolean;
+}
+
+/**
  * Row shape returned by the directory + public-profile lookups. Always carries
  * the doctor's currently `open` slots so callers can show bookability and so
  * the directory can be ordered by `has-open-slot DESC, feeBdt ASC`.
@@ -100,6 +117,35 @@ export class DoctorRepository {
   }
 
   /**
+   * Verified-doctor candidates for the AI suggestion matcher. We project to
+   * the matcher's `SuggestionCandidate` shape here (precomputed `hasOpenSlot`,
+   * no per-slot detail) so the matcher can stay pure and database-free.
+   *
+   * Scoped to `status: verified` at the query level — non-verified rows are
+   * never considered as suggestions.
+   */
+  async findVerifiedForSuggestions(): Promise<SuggestionCandidateRow[]> {
+    const rows = await prisma.doctorProfile.findMany({
+      where: { status: "verified" as PrismaDoctorStatus },
+      include: {
+        user: { select: { name: true } },
+        slots: { where: { status: "open" }, select: { id: true }, take: 1 },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      name: row.user.name,
+      specialties: row.specialties as unknown as Specialty[],
+      affiliation: row.affiliation,
+      city: row.city as unknown as City | null,
+      experienceYears: row.experienceYears,
+      feeBdt: row.feeBdt,
+      hasOpenSlot: row.slots.length > 0,
+    }));
+  }
+
+  /**
    * Public profile lookup. Scoped to `verified` at the query level so a
    * draft or pending profile with that id is indistinguishable from "no
    * such doctor" — non-verified profiles never leak.
@@ -145,6 +191,7 @@ export type DoctorRepositoryLike = {
   submit(userId: string, body: DoctorOnboardingSubmit): Promise<NonNullable<DoctorProfileRow>>;
   findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]>;
   findPublicById(id: string): Promise<PublicDoctorRow | null>;
+  findVerifiedForSuggestions(): Promise<SuggestionCandidateRow[]>;
 };
 
 function toPublicRow(row: {

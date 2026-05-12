@@ -3,6 +3,7 @@ import {
   type DoctorOnboardingDraft,
   type DoctorOnboardingSubmit,
   directoryQuerySchema,
+  doctorSuggestionQuerySchema,
 } from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
 import { DoctorService } from "../services/doctorService";
@@ -68,6 +69,23 @@ export class DoctorController {
       const query = directoryQuerySchema.parse(req.query);
       const doctors = await doctorService.listDirectory(query);
       res.json({ success: true, data: doctors });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Ranked doctor suggestions for the AI prediction result card. The caller
+   * passes the prediction's `recommendedSpecialties` as `specialty` query
+   * params (zero, one, or many — Express normalizes repeated keys to an
+   * array). No auth: the data is the same verified-only set the public
+   * directory exposes.
+   */
+  static async getSuggestions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { specialty } = doctorSuggestionQuerySchema.parse(req.query);
+      const suggestions = await doctorService.getSuggestions(specialty);
+      res.json({ success: true, data: suggestions });
     } catch (error) {
       next(error);
     }

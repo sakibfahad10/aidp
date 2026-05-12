@@ -226,3 +226,32 @@ export interface PublicDoctorProfile extends DirectoryDoctor {
   publicEmail: string | null;
   openSlots: { id: string; startTime: string }[];
 }
+
+/**
+ * Query for GET /api/v1/doctor-suggestions. The caller passes the prediction's
+ * `recommendedSpecialties` (zero, one, or many `specialty` query params); the
+ * matcher takes it from there, with `GeneralMedicine` as the fallback when
+ * nothing maps.
+ */
+export const doctorSuggestionQuerySchema = z.object({
+  specialty: z
+    .union([specialtySchema, z.array(specialtySchema)])
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return [] as Specialty[];
+      return Array.isArray(value) ? value : [value];
+    }),
+});
+
+export type DoctorSuggestionQuery = z.infer<typeof doctorSuggestionQuerySchema>;
+
+/**
+ * One row in the suggested-doctor list returned by the matcher / suggestions
+ * endpoint. `matchedSpecialties` is the subset of the doctor's specialties
+ * that drove the match — the result card uses it as the deep-link target
+ * (one link per matched specialty, into the directory pre-filtered).
+ */
+export interface DoctorSuggestion extends DirectoryDoctor {
+  hasOpenSlot: boolean;
+  matchedSpecialties: Specialty[];
+}

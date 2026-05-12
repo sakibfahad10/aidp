@@ -7,12 +7,14 @@ import type {
   DoctorOnboardingDraft,
   DoctorOnboardingSubmit,
   DoctorProfileResponse,
+  DoctorSuggestion,
   HealthProfile,
   PaginatedResponse,
   Prediction,
   PredictRequest,
   PublicDoctorProfile,
   Role,
+  Specialty,
   ToggleAvailabilitySlotResult,
   UpdateHealthProfileRequest,
 } from "@disease-prediction/shared";
@@ -165,6 +167,17 @@ export async function getPublicDoctorProfile(
   id: string,
 ): Promise<ApiResponse<PublicDoctorProfile>> {
   return fetchApi<ApiResponse<PublicDoctorProfile>>(`/api/v1/doctors/${encodeURIComponent(id)}`);
+}
+
+export async function getDoctorSuggestions(
+  specialties: Specialty[],
+): Promise<ApiResponse<DoctorSuggestion[]>> {
+  const params = new URLSearchParams();
+  for (const s of specialties) params.append("specialty", s);
+  const qs = params.toString();
+  return fetchApi<ApiResponse<DoctorSuggestion[]>>(
+    `/api/v1/doctor-suggestions${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export async function getOwnAvailability(

@@ -6,6 +6,7 @@ import {
   type DoctorOnboardingSubmit,
   type DoctorProfileResponse,
   DoctorStatus,
+  type DoctorSuggestion,
   type PublicDoctorProfile,
   type Specialty,
 } from "@disease-prediction/shared";
@@ -16,6 +17,7 @@ import {
   type DoctorRepositoryLike,
   type PublicDoctorRow,
 } from "../repositories/doctorRepository";
+import { suggestDoctors } from "./suggestionMatcher";
 
 function isUniqueConstraintError(err: unknown): boolean {
   return (
@@ -117,5 +119,16 @@ export class DoctorService {
   async getPublicProfile(id: string): Promise<PublicDoctorProfile | null> {
     const row = await this.repo.findPublicById(id);
     return row ? toPublicProfile(row) : null;
+  }
+
+  /**
+   * Rank verified doctors for the AI suggestion feature. Repository fetches
+   * verified candidates with `hasOpenSlot` precomputed; the pure matcher
+   * (see `./suggestionMatcher`) handles overlap → has-open-slot → fee-asc
+   * ordering and the `GeneralMedicine` fallback.
+   */
+  async getSuggestions(recommendedSpecialties: Specialty[]): Promise<DoctorSuggestion[]> {
+    const candidates = await this.repo.findVerifiedForSuggestions();
+    return suggestDoctors(recommendedSpecialties, candidates);
   }
 }

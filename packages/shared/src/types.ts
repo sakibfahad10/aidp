@@ -1,3 +1,4 @@
+import type { Specialty } from "./doctor";
 import type { ReportFileMetadata } from "./report-file";
 
 /** Supported input types for disease prediction */
@@ -71,6 +72,13 @@ export interface AIPredictionResponse {
   summary: string;
   recommendation: string;
   redFlags: string[];
+  /**
+   * Doctor specialties the AI suggests for this prediction — chosen from the
+   * controlled vocabulary (see ADR 0003). Tolerant by design: parsing fills
+   * `[]` when missing and drops unknown values, so legacy `Prediction` rows
+   * and imperfect model output never break parsing.
+   */
+  recommendedSpecialties: Specialty[];
 }
 
 /** Full prediction record as stored in the database */

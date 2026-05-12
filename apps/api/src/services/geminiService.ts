@@ -3,11 +3,17 @@ import {
   type AllowedReportFileMimeType,
   InputType,
   type PredictionPayload,
+  Specialty,
 } from "@disease-prediction/shared";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 import { AppError } from "../middlewares/errorHandler";
 import { parseAiResponse } from "./parseAiResponse";
+
+// Inlined into the prompt so the model only ever picks from the controlled
+// vocabulary that the doctor directory + suggestion matcher key on. Any value
+// it emits outside this list is dropped by `parseAiResponse` (per ADR 0003).
+const SPECIALTY_VOCABULARY = Object.values(Specialty).join(", ");
 
 const SYSTEM_PROMPT = `You are an AI medical assistant. Analyze the provided health information and return a JSON prediction.
 
@@ -23,7 +29,8 @@ IMPORTANT: You must respond with ONLY valid JSON in this exact format, no markdo
   ],
   "summary": "A concise summary of the analysis",
   "recommendation": "What the patient should do next",
-  "redFlags": ["List of any urgent warning signs to watch for"]
+  "redFlags": ["List of any urgent warning signs to watch for"],
+  "recommendedSpecialties": ["Specialty from the controlled vocabulary"]
 }
 
 Guidelines:
@@ -34,6 +41,7 @@ Guidelines:
 - Include relevant red flags even if risk is low
 - NEVER provide a definitive diagnosis, always frame as "possible conditions"
 - Always recommend consulting a healthcare professional
+- For "recommendedSpecialties", pick 1–3 doctor specialties relevant to the most likely conditions. Choose ONLY from this controlled vocabulary (case-sensitive, exact spelling): ${SPECIALTY_VOCABULARY}. If nothing else fits, return ["GeneralMedicine"]. Never invent values outside the list.
 
 DISCLAIMER: This is an AI-based analysis for informational purposes only and should not replace professional medical advice.`;
 
