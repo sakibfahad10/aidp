@@ -59,18 +59,18 @@ export function appointmentRowToWire(row: AppointmentRow): Appointment {
 }
 
 /**
- * Outcome of the booking transaction. `created` is the freshly inserted row;
- * the service maps it to the wire shape. The repository never throws on
- * "slot already taken" — it returns `null` from `bookSlotTransaction` for
- * caller-friendly handling.
+ * Outcome of the booking transaction — either the freshly inserted `row`
+ * mapped to `AppointmentRow`, or a `slot-not-open` sentinel the service
+ * turns into a clean 409. The repository never throws on "slot already
+ * taken"; Prisma error codes are caught here so no stack traces leak out.
  */
 export type BookingOutcome = { row: AppointmentRow } | { error: "slot-not-open" };
 
 /**
  * Repository for `Appointment`. The deep concern here is the **booking
- * transaction**: in one Postgres transaction, the slot is re-read inside the
- * tx, asserted `open`, flipped to `booked`, and the Appointment is inserted.
- * The `slotId @unique` constraint on Appointment is the database-level
+ * transaction**: in one Postgres transaction, the slot is conditionally
+ * flipped from `open` to `booked` and the Appointment is inserted. The
+ * `slotId @unique` constraint on Appointment is the database-level
  * backstop against two transactions both passing the in-tx `open` check.
  */
 export class AppointmentRepository {
@@ -80,8 +80,7 @@ export class AppointmentRepository {
    * Returns `{ row }` on success. Returns `{ error: "slot-not-open" }` if
    * the slot is missing, not open, or if a concurrent transaction beat us
    * to it (caught via Prisma P2002 on the Appointment.slotId unique index
-   * or P2025 on the conditional update). The service maps both outcomes
-   * to a clean 409 — no stack traces leak through.
+   * or P2025 on the conditional update).
    */
   async bookSlotTransaction(
     patientId: string,
@@ -90,20 +89,15 @@ export class AppointmentRepository {
   ): Promise<BookingOutcome> {
     try {
       const row = await prisma.$transaction(async (tx) => {
-        const slot = await tx.availabilitySlot.findUnique({
-          where: { id: slotId },
-          select: { id: true, doctorId: true, status: true },
-        });
-        if (!slot || slot.status !== ("open" as PrismaSlotStatus)) {
-          throw new SlotNotOpenError();
-        }
-
-        // Conditional update: only flip when the row is still `open`. Two
-        // concurrent transactions cannot both succeed here — the second one
-        // sees zero rows updated and throws P2025.
-        await tx.availabilitySlot.update({
+        // Conditional update: only flip when the row exists and is still
+        // `open`. Two concurrent transactions cannot both succeed — the
+        // second one sees zero rows updated and throws P2025. The same
+        // P2025 covers "slot id doesn't exist at all", so a separate
+        // pre-read isn't needed.
+        const slot = await tx.availabilitySlot.update({
           where: { id: slotId, status: "open" as PrismaSlotStatus },
           data: { status: "booked" as PrismaSlotStatus },
+          select: { doctorId: true },
         });
 
         const created = await tx.appointment.create({
@@ -114,7 +108,6 @@ export class AppointmentRepository {
       });
       return { row };
     } catch (err) {
-      if (err instanceof SlotNotOpenError) return { error: "slot-not-open" };
       if (isPrismaConflict(err)) return { error: "slot-not-open" };
       throw err;
     }
@@ -141,19 +134,12 @@ export class AppointmentRepository {
   }
 }
 
-class SlotNotOpenError extends Error {
-  constructor() {
-    super("Slot is not open");
-    this.name = "SlotNotOpenError";
-  }
-}
-
 function isPrismaConflict(err: unknown): boolean {
   if (typeof err !== "object" || err === null || !("code" in err)) return false;
   const code = (err as { code?: string }).code;
   // P2002: unique constraint violation (slotId @unique on Appointment).
-  // P2025: record-to-update not found (the conditional update missed because
-  // a concurrent tx already flipped the slot to booked).
+  // P2025: record-to-update not found — either the slot id doesn't exist
+  // or a concurrent tx already flipped the slot away from `open`.
   return code === "P2002" || code === "P2025";
 }
 
