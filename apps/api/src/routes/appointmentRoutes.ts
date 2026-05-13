@@ -1,6 +1,7 @@
 import { bookSlotRequestSchema, Role } from "@disease-prediction/shared";
 import { Router } from "express";
 import { AppointmentController } from "../controllers/appointmentController";
+import { BriefingController } from "../controllers/briefingController";
 import { requireApiAuth } from "../middlewares/requireAuth";
 import { requirePatientCapability } from "../middlewares/requirePatientCapability";
 import { requireRole } from "../middlewares/requireRole";
@@ -34,6 +35,17 @@ router.get(
   requireApiAuth,
   doctorOnly,
   AppointmentController.listForDoctor,
+);
+
+// Patient-context briefing — read-time projection of the booked patient's
+// HealthProfile + most recent predictions + appointment note. Scoped to
+// the calling doctor's userId in the service so a doctor can only see
+// briefings for their own appointments.
+router.get(
+  "/doctors/me/appointments/:appointmentId/briefing",
+  requireApiAuth,
+  doctorOnly,
+  BriefingController.forDoctor,
 );
 
 export default router;

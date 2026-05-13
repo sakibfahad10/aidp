@@ -63,3 +63,11 @@ export class HealthProfileRepository {
     return toHealthProfile(row);
   }
 }
+
+/**
+ * Minimal repository surface depended on by the briefing service. Lets
+ * tests inject a fake without dragging Prisma along.
+ */
+export interface HealthProfileRepositoryLike {
+  findByUserId(userId: string): Promise<HealthProfile | null>;
+}

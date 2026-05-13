@@ -1,5 +1,6 @@
 export * from "./appointment";
 export * from "./availability";
+export * from "./briefing";
 export * from "./doctor";
 export * from "./healthProfile";
 export * from "./report-file";

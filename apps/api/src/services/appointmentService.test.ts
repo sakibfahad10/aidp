@@ -57,6 +57,9 @@ function fakeRepo() {
     listForDoctorUserId: vi.fn(async (userId) =>
       userId === DOCTOR_USER_ID ? [...appointments] : [],
     ),
+    findByIdForDoctorUserId: vi.fn(async (id, userId) =>
+      userId === DOCTOR_USER_ID ? (appointments.find((a) => a.id === id) ?? null) : null,
+    ),
   };
 
   return { repo, slots, setSlot, appointments };

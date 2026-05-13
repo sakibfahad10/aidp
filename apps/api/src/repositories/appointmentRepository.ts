@@ -132,6 +132,23 @@ export class AppointmentRepository {
     });
     return rows.map(toRow);
   }
+
+  /**
+   * Single-appointment lookup scoped to the *doctor's user id* — used by the
+   * briefing endpoint so an authenticated doctor can only fetch briefings
+   * for their own appointments. Returns `null` for an unknown id and for
+   * an id that belongs to a different doctor (same response: no leakage).
+   */
+  async findByIdForDoctorUserId(
+    appointmentId: string,
+    doctorUserId: string,
+  ): Promise<AppointmentRow | null> {
+    const row = await prisma.appointment.findFirst({
+      where: { id: appointmentId, doctor: { userId: doctorUserId } },
+      include: appointmentInclude,
+    });
+    return row ? toRow(row) : null;
+  }
 }
 
 function isPrismaConflict(err: unknown): boolean {
@@ -151,4 +168,8 @@ export interface AppointmentRepositoryLike {
   ): Promise<BookingOutcome>;
   listForPatient(patientId: string): Promise<AppointmentRow[]>;
   listForDoctorUserId(userId: string): Promise<AppointmentRow[]>;
+  findByIdForDoctorUserId(
+    appointmentId: string,
+    doctorUserId: string,
+  ): Promise<AppointmentRow | null>;
 }

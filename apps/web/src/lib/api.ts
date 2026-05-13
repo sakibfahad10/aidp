@@ -13,6 +13,7 @@ import type {
   DoctorSuggestion,
   HealthProfile,
   PaginatedResponse,
+  PatientBriefing,
   Prediction,
   PredictRequest,
   PublicDoctorProfile,
@@ -241,6 +242,16 @@ export async function getDoctorAppointments(
   return fetchApi<ApiResponse<AppointmentListResponse>>("/api/v1/doctors/me/appointments", {
     token,
   });
+}
+
+export async function getAppointmentBriefing(
+  appointmentId: string,
+  token: string | null,
+): Promise<ApiResponse<PatientBriefing>> {
+  return fetchApi<ApiResponse<PatientBriefing>>(
+    `/api/v1/doctors/me/appointments/${encodeURIComponent(appointmentId)}/briefing`,
+    { token },
+  );
 }
 
 export async function checkHealth(): Promise<ApiResponse<{ status: string }>> {

@@ -9,6 +9,7 @@ import {
   InputType as SharedInputType,
   RiskLevel as SharedRiskLevel,
 } from "@disease-prediction/shared";
+import type { BriefingInputPrediction } from "../services/briefingProjection";
 
 function toPrismaInputType(inputType: SharedInputType): PrismaInputType {
   const map: Record<SharedInputType, PrismaInputType> = {
@@ -69,4 +70,39 @@ export class PredictionRepository {
     const where = userId ? { id, userId } : { id };
     return prisma.prediction.findFirst({ where });
   }
+
+  /**
+   * Most recent `limit` predictions for a user, projected straight into
+   * the briefing projection's input shape. Lives on the repository so the
+   * Prisma row → wire-string-shape mapping (`createdAt.toISOString()`,
+   * enum casts) has one home.
+   */
+  async listRecentForUser(userId: string, limit: number): Promise<BriefingInputPrediction[]> {
+    const rows = await prisma.prediction.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        createdAt: true,
+        inputType: true,
+        riskLevel: true,
+        summary: true,
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      createdAt: row.createdAt.toISOString(),
+      inputType: row.inputType,
+      // Prisma `RiskLevel` enum values are identical strings to the shared
+      // `RiskLevel` enum values, so this is a same-string cast at the
+      // boundary — no runtime conversion needed.
+      riskLevel: row.riskLevel as unknown as SharedRiskLevel,
+      summary: row.summary,
+    }));
+  }
+}
+
+export interface PredictionRepositoryLike {
+  listRecentForUser(userId: string, limit: number): Promise<BriefingInputPrediction[]>;
 }

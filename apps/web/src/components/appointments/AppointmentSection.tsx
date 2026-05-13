@@ -4,11 +4,13 @@ import type { Appointment } from "@disease-prediction/shared";
 import { Inbox, Stethoscope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BriefingCard } from "./BriefingCard";
 
 /**
  * Shared upcoming/past list section used by both the patient (`/appointments`)
  * and doctor (`/doctor/appointments`) views. The two views differ only in
- * which name to surface as the heading — passed in as `audience`.
+ * which name to surface as the heading — passed in as `audience` — and in
+ * whether the per-appointment patient briefing is rendered (doctor only).
  */
 export function AppointmentSection({
   title,
@@ -70,10 +72,15 @@ function AppointmentCard({
           </span>
         </div>
       </CardHeader>
-      {appointment.note ? (
+      {appointment.note || audience === "doctor" ? (
         <CardContent className="pt-0">
-          <div className="text-xs text-muted-foreground mb-0.5">Note</div>
-          <p className="text-sm">{appointment.note}</p>
+          {appointment.note && audience === "patient" ? (
+            <>
+              <div className="text-xs text-muted-foreground mb-0.5">Note</div>
+              <p className="text-sm">{appointment.note}</p>
+            </>
+          ) : null}
+          {audience === "doctor" ? <BriefingCard appointmentId={appointment.id} /> : null}
         </CardContent>
       ) : null}
     </Card>
