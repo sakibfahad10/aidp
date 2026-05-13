@@ -139,7 +139,6 @@ function slotAt(midnight: Date, dayOffset: number, hourOfDay: number): Date {
 }
 
 interface DoctorSpec {
-  index: number;
   userId: string;
   profileId: string;
   email: string;
@@ -157,7 +156,6 @@ interface DoctorSpec {
 
 const DOCTORS: DoctorSpec[] = [
   {
-    index: 0,
     userId: "demo_doc_user_1",
     profileId: "demo_doc_profile_1",
     email: "demo.doctor.1@medpredict.demo",
@@ -173,7 +171,6 @@ const DOCTORS: DoctorSpec[] = [
     feeBdt: 1500,
   },
   {
-    index: 1,
     userId: "demo_doc_user_2",
     profileId: "demo_doc_profile_2",
     email: "demo.doctor.2@medpredict.demo",
@@ -189,7 +186,6 @@ const DOCTORS: DoctorSpec[] = [
     feeBdt: 1200,
   },
   {
-    index: 2,
     userId: "demo_doc_user_3",
     profileId: "demo_doc_profile_3",
     email: "demo.doctor.3@medpredict.demo",
@@ -205,7 +201,6 @@ const DOCTORS: DoctorSpec[] = [
     feeBdt: 800,
   },
   {
-    index: 3,
     userId: "demo_doc_user_4",
     profileId: "demo_doc_profile_4",
     email: "demo.doctor.4@medpredict.demo",
@@ -221,7 +216,6 @@ const DOCTORS: DoctorSpec[] = [
     feeBdt: 1000,
   },
   {
-    index: 4,
     userId: "demo_doc_user_5",
     profileId: "demo_doc_profile_5",
     email: "demo.doctor.5@medpredict.demo",
@@ -238,29 +232,28 @@ const DOCTORS: DoctorSpec[] = [
   },
 ];
 
+interface PredictionSpec {
+  inputType: PrismaInputType;
+  riskLevel: PrismaRiskLevel;
+  summary: string;
+  recommendedSpecialties: PrismaSpecialty[];
+  daysAgo: number;
+  inputPayload: Record<string, unknown>;
+  possibleConditions: Array<{ name: string; probability: string; description: string }>;
+  recommendation: string;
+  redFlags: string[];
+}
+
 interface PatientSpec {
-  index: number;
   userId: string;
   email: string;
   name: string;
   health: Omit<DemoHealthProfile, "userId">;
-  predictions: Array<{
-    suffix: string;
-    inputType: PrismaInputType;
-    riskLevel: PrismaRiskLevel;
-    summary: string;
-    recommendedSpecialties: PrismaSpecialty[];
-    daysAgo: number;
-    inputPayload: Record<string, unknown>;
-    possibleConditions: Array<{ name: string; probability: string; description: string }>;
-    recommendation: string;
-    redFlags: string[];
-  }>;
+  predictions: PredictionSpec[];
 }
 
 const PATIENTS: PatientSpec[] = [
   {
-    index: 0,
     userId: "demo_patient_user_1",
     email: "demo.patient.1@medpredict.demo",
     name: "Anika Rahman",
@@ -275,7 +268,6 @@ const PATIENTS: PatientSpec[] = [
     },
     predictions: [
       {
-        suffix: "1",
         inputType: "structured",
         riskLevel: "moderate",
         summary: "Elevated fasting glucose with controlled blood pressure on current regimen.",
@@ -300,7 +292,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: [],
       },
       {
-        suffix: "2",
         inputType: "symptom",
         riskLevel: "high",
         summary: "Episodic chest tightness on exertion in a patient with hypertension.",
@@ -323,7 +314,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: ["Chest pain at rest", "Pain radiating to jaw or arm"],
       },
       {
-        suffix: "3",
         inputType: "structured",
         riskLevel: "low",
         summary: "General check on a stable patient — no acute findings.",
@@ -350,7 +340,6 @@ const PATIENTS: PatientSpec[] = [
     ],
   },
   {
-    index: 1,
     userId: "demo_patient_user_2",
     email: "demo.patient.2@medpredict.demo",
     name: "Tanvir Hasan",
@@ -365,7 +354,6 @@ const PATIENTS: PatientSpec[] = [
     },
     predictions: [
       {
-        suffix: "1",
         inputType: "symptom",
         riskLevel: "moderate",
         summary: "Persistent dry cough and wheeze in an asthmatic.",
@@ -388,7 +376,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: ["Severe shortness of breath", "Lips turning blue"],
       },
       {
-        suffix: "2",
         inputType: "report",
         riskLevel: "low",
         summary: "Lung function test shows mild reversible obstruction — well-controlled asthma.",
@@ -413,7 +400,6 @@ const PATIENTS: PatientSpec[] = [
     ],
   },
   {
-    index: 2,
     userId: "demo_patient_user_3",
     email: "demo.patient.3@medpredict.demo",
     name: "Sumaiya Chowdhury",
@@ -428,7 +414,6 @@ const PATIENTS: PatientSpec[] = [
     },
     predictions: [
       {
-        suffix: "1",
         inputType: "symptom",
         riskLevel: "low",
         summary: "Intermittent skin rash, likely contact-related.",
@@ -451,7 +436,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: [],
       },
       {
-        suffix: "2",
         inputType: "structured",
         riskLevel: "low",
         summary: "Routine check — no concerning findings.",
@@ -476,7 +460,6 @@ const PATIENTS: PatientSpec[] = [
     ],
   },
   {
-    index: 3,
     userId: "demo_patient_user_4",
     email: "demo.patient.4@medpredict.demo",
     name: "Rashedul Karim",
@@ -491,7 +474,6 @@ const PATIENTS: PatientSpec[] = [
     },
     predictions: [
       {
-        suffix: "1",
         inputType: "structured",
         riskLevel: "high",
         summary: "Known CAD patient with rising LDL despite statin therapy.",
@@ -516,7 +498,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: ["Resting chest pain", "Worsening shortness of breath"],
       },
       {
-        suffix: "2",
         inputType: "report",
         riskLevel: "moderate",
         summary: "Lipid panel shows partial response to higher statin dose.",
@@ -539,7 +520,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: [],
       },
       {
-        suffix: "3",
         inputType: "symptom",
         riskLevel: "critical",
         summary: "New-onset resting chest tightness with diaphoresis — possible ACS.",
@@ -565,7 +545,6 @@ const PATIENTS: PatientSpec[] = [
     ],
   },
   {
-    index: 4,
     userId: "demo_patient_user_5",
     email: "demo.patient.5@medpredict.demo",
     name: "Nusrat Jahan",
@@ -580,7 +559,6 @@ const PATIENTS: PatientSpec[] = [
     },
     predictions: [
       {
-        suffix: "1",
         inputType: "symptom",
         riskLevel: "moderate",
         summary: "Recurrent migraines with aura — pattern unchanged.",
@@ -604,7 +582,6 @@ const PATIENTS: PatientSpec[] = [
         redFlags: ["First-ever severe headache", "Sudden thunderclap onset"],
       },
       {
-        suffix: "2",
         inputType: "structured",
         riskLevel: "low",
         summary: "Routine wellness check — vitals within normal range.",
@@ -632,10 +609,10 @@ const PATIENTS: PatientSpec[] = [
 ];
 
 /**
- * Each doctor gets 4 open slots in the future and 2 slots that drive
- * appointments (1 past + 1 upcoming). The runner re-creates all slots from
- * scratch on every run so cross-day reruns stay clean — only the slots in
- * this plan exist in DB after seeding.
+ * Open future slots created for every doctor. Appointment-driven slots are
+ * created separately from APPOINTMENTS below. The runner re-creates all
+ * slots from scratch on every run so cross-day reruns stay clean — only
+ * the slots in this plan exist in DB after seeding.
  */
 const OPEN_SLOT_OFFSETS: Array<{ dayOffset: number; hour: number }> = [
   { dayOffset: 1, hour: 10 },
@@ -726,7 +703,7 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
   const predictions: DemoPrediction[] = [];
   const appointments: DemoAppointment[] = [];
 
-  for (const doc of DOCTORS) {
+  for (const [docIndex, doc] of DOCTORS.entries()) {
     users.push({
       id: doc.userId,
       email: doc.email,
@@ -748,11 +725,9 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
       feeBdt: doc.feeBdt,
       status: "verified",
     });
-    for (let i = 0; i < OPEN_SLOT_OFFSETS.length; i++) {
-      const offset = OPEN_SLOT_OFFSETS[i];
-      if (!offset) continue;
+    for (const [slotIndex, offset] of OPEN_SLOT_OFFSETS.entries()) {
       slots.push({
-        id: `demo_slot_open_${doc.index + 1}_${i + 1}`,
+        id: `demo_slot_open_${docIndex + 1}_${slotIndex + 1}`,
         doctorId: doc.profileId,
         startTime: slotAt(midnight, offset.dayOffset, offset.hour),
         status: "open",
@@ -760,7 +735,7 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
     }
   }
 
-  for (const patient of PATIENTS) {
+  for (const [patientIndex, patient] of PATIENTS.entries()) {
     users.push({
       id: patient.userId,
       email: patient.email,
@@ -769,9 +744,9 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
       patientCapability: true,
     });
     healthProfiles.push({ userId: patient.userId, ...patient.health });
-    for (const pred of patient.predictions) {
+    for (const [predIndex, pred] of patient.predictions.entries()) {
       predictions.push({
-        id: `demo_pred_${patient.index + 1}_${pred.suffix}`,
+        id: `demo_pred_${patientIndex + 1}_${predIndex + 1}`,
         userId: patient.userId,
         inputType: pred.inputType,
         inputPayload: pred.inputPayload,
@@ -790,13 +765,11 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
     }
   }
 
-  for (let i = 0; i < APPOINTMENTS.length; i++) {
-    const appt = APPOINTMENTS[i];
-    if (!appt) continue;
+  for (const [apptIndex, appt] of APPOINTMENTS.entries()) {
     const patient = PATIENTS[appt.patientIndex];
     const doctor = DOCTORS[appt.doctorIndex];
     if (!patient || !doctor) continue;
-    const slotId = `demo_slot_appt_${i + 1}`;
+    const slotId = `demo_slot_appt_${apptIndex + 1}`;
     slots.push({
       id: slotId,
       doctorId: doctor.profileId,
@@ -804,7 +777,7 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
       status: "booked",
     });
     appointments.push({
-      id: `demo_appt_${i + 1}`,
+      id: `demo_appt_${apptIndex + 1}`,
       patientId: patient.userId,
       doctorId: doctor.profileId,
       slotId,
