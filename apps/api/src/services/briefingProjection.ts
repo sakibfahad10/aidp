@@ -123,10 +123,8 @@ function identitySentence(patientName: string | null, profile: HealthProfile): s
   } else if (profile.gender) {
     descriptors.push(`is ${profile.gender}`);
   }
-  let sentence = descriptors.length > 0 ? `${name} ${descriptors.join(", ")}` : `${name}`;
-  if (profile.bloodType) {
-    sentence += ` (blood type ${profile.bloodType})`;
-  }
+  const base = descriptors.length > 0 ? `${name} ${descriptors.join(", ")}` : name;
+  const sentence = profile.bloodType ? `${base} (blood type ${profile.bloodType})` : base;
   return `${sentence}.`;
 }
 

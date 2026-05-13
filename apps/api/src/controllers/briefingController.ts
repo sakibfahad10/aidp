@@ -20,9 +20,8 @@ export class BriefingController {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
       }
-      const rawId = req.params.appointmentId;
-      const appointmentId = Array.isArray(rawId) ? rawId[0] : rawId;
-      if (!appointmentId) {
+      const { appointmentId } = req.params;
+      if (typeof appointmentId !== "string" || !appointmentId) {
         res.status(400).json({ success: false, error: "appointmentId is required" });
         return;
       }

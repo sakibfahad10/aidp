@@ -72,15 +72,14 @@ function AppointmentCard({
           </span>
         </div>
       </CardHeader>
-      {appointment.note || audience === "doctor" ? (
+      {audience === "doctor" ? (
         <CardContent className="pt-0">
-          {appointment.note && audience === "patient" ? (
-            <>
-              <div className="text-xs text-muted-foreground mb-0.5">Note</div>
-              <p className="text-sm">{appointment.note}</p>
-            </>
-          ) : null}
-          {audience === "doctor" ? <BriefingCard appointmentId={appointment.id} /> : null}
+          <BriefingCard appointmentId={appointment.id} />
+        </CardContent>
+      ) : appointment.note ? (
+        <CardContent className="pt-0">
+          <div className="text-xs text-muted-foreground mb-0.5">Note</div>
+          <p className="text-sm">{appointment.note}</p>
         </CardContent>
       ) : null}
     </Card>

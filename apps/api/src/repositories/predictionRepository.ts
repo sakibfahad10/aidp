@@ -30,6 +30,16 @@ function toPrismaRiskLevel(riskLevel: SharedRiskLevel): PrismaRiskLevel {
   return map[riskLevel];
 }
 
+function fromPrismaRiskLevel(riskLevel: PrismaRiskLevel): SharedRiskLevel {
+  const map: Record<PrismaRiskLevel, SharedRiskLevel> = {
+    low: SharedRiskLevel.LOW,
+    moderate: SharedRiskLevel.MODERATE,
+    high: SharedRiskLevel.HIGH,
+    critical: SharedRiskLevel.CRITICAL,
+  };
+  return map[riskLevel];
+}
+
 export class PredictionRepository {
   async create(
     inputType: SharedInputType,
@@ -94,10 +104,7 @@ export class PredictionRepository {
       id: row.id,
       createdAt: row.createdAt.toISOString(),
       inputType: row.inputType,
-      // Prisma `RiskLevel` enum values are identical strings to the shared
-      // `RiskLevel` enum values, so this is a same-string cast at the
-      // boundary — no runtime conversion needed.
-      riskLevel: row.riskLevel as unknown as SharedRiskLevel,
+      riskLevel: fromPrismaRiskLevel(row.riskLevel),
       summary: row.summary,
     }));
   }
