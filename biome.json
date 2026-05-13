@@ -79,6 +79,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/db/prisma/seed.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
     }
   ]
 }

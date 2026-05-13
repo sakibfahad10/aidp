@@ -15,6 +15,7 @@
     "db:generate": "pnpm --filter @disease-prediction/db generate",
     "db:push": "pnpm --filter @disease-prediction/db push",
     "db:migrate": "pnpm --filter @disease-prediction/db migrate",
+    "db:seed": "pnpm --filter @disease-prediction/db seed",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
