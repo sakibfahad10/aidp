@@ -2,6 +2,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
+import { RoleGuard } from "@/components/layout/role-guard";
+import { UserProvider } from "@/lib/user-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,8 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signInFallbackRedirectUrl="/post-signin"
           signUpFallbackRedirectUrl="/post-signin"
         >
-          <Navbar />
-          <main className="container py-8">{children}</main>
+          <UserProvider>
+            <Navbar />
+            <main className="container py-8">
+              <RoleGuard>{children}</RoleGuard>
+            </main>
+          </UserProvider>
         </ClerkProvider>
       </body>
     </html>

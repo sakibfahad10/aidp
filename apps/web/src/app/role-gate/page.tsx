@@ -7,11 +7,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser, setUserRole } from "@/lib/api";
+import { setUserRole } from "@/lib/api";
 import { landingPathForRole } from "@/lib/role";
+import { useUser } from "@/lib/user-context";
 
 export default function RoleGatePage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user, isLoading, setUser } = useUser();
   const router = useRouter();
   const [submittingRole, setSubmittingRole] = useState<Role | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,24 +25,10 @@ export default function RoleGatePage() {
       router.replace("/sign-in");
       return;
     }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getToken();
-        const response = await getCurrentUser(token);
-        if (cancelled) return;
-        const role = response.data?.role ?? null;
-        if (role) router.replace(landingPathForRole(role));
-      } catch {
-        // Leave the user on the gate; they can pick and retry.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn, getToken, router]);
+    if (!isLoading && user?.role) {
+      router.replace(landingPathForRole(user.role));
+    }
+  }, [isLoaded, isSignedIn, isLoading, user, router]);
 
   const choose = async (role: Role) => {
     setError(null);
@@ -51,6 +39,9 @@ export default function RoleGatePage() {
       if (!response.success) {
         throw new Error(response.error || "Failed to set role");
       }
+      // Push the updated user into shared state before navigating so the route
+      // guard sees the new role instead of bouncing us back to the gate.
+      if (response.data) setUser(response.data);
       router.replace(landingPathForRole(role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to set role");

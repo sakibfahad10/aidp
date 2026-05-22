@@ -1,7 +1,7 @@
 "use client";
 
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { type CurrentUserResponse, isDualRoleUser, Role } from "@disease-prediction/shared";
+import { isDualRoleUser, Role } from "@disease-prediction/shared";
 import {
   Activity,
   ArrowLeftRight,
@@ -17,7 +17,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { enablePatientCapability, getCurrentUser } from "@/lib/api";
+import { enablePatientCapability } from "@/lib/api";
+import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 
 type NavContext = "patient" | "doctor";
@@ -58,27 +59,9 @@ const doctorItems = [
 export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn, getToken } = useAuth();
-  const [user, setUser] = useState<CurrentUserResponse | null>(null);
+  const { user, setUser } = useUser();
   const [context, setContextState] = useState<NavContext>("patient");
   const [registering, setRegistering] = useState(false);
-
-  const refreshUser = useCallback(async () => {
-    if (!isSignedIn) {
-      setUser(null);
-      return;
-    }
-    try {
-      const token = await getToken();
-      const res = await getCurrentUser(token);
-      if (res.success && res.data) setUser(res.data);
-    } catch {
-      // Swallow — nav still renders the public surface if the user fetch fails.
-    }
-  }, [isSignedIn, getToken]);
-
-  useEffect(() => {
-    void refreshUser();
-  }, [refreshUser]);
 
   // Default context is the user's primary role. For a dual user, a persisted
   // choice wins so a "switch" survives a page navigation.
@@ -112,7 +95,7 @@ export function Navbar() {
     } finally {
       setRegistering(false);
     }
-  }, [getToken, setContext]);
+  }, [getToken, setContext, setUser]);
 
   const dualRole = user ? isDualRoleUser(user) : false;
   const canRegisterAsPatient = !!user && user.role === Role.DOCTOR && !user.patientCapability;
