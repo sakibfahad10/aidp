@@ -58,7 +58,8 @@ export function hasPatientCapability(
 
 /**
  * True when the user has *both* a doctor and a patient surface, i.e. their
- * primary role is DOCTOR and they've opted into patient capability. These
+ * primary role is DOCTOR and they've opted into patient
+ * capability. These
  * are the users that get the doctor↔patient nav context switch.
  */
 export function isDualRoleUser(
