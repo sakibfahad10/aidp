@@ -22,8 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           afterSignOutUrl="/"
-          signInFallbackRedirectUrl="/post-signin"
-          signUpFallbackRedirectUrl="/post-signin"
+          signInForceRedirectUrl="/post-signin"
+          signUpForceRedirectUrl="/post-signin"
         >
           <UserProvider>
             <Navbar />

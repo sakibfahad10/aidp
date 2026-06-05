@@ -9,18 +9,19 @@ import { useUser } from "@/lib/user-context";
 
 // Patient-capability-gated screens (mirror the `requirePatientCapability` API routes).
 const PATIENT_PREFIXES = ["/predict", "/history", "/profile", "/appointments"];
-// Doctor-role-gated screens. Note: `/doctors` (public directory) is handled as
-// exempt below and must be checked first, since it also starts with `/doctor`.
+// Doctor-role-gated screens. The trailing-slash match below keeps the public
+// `/doctors` directory out of this (it isn't `/doctor` nor under `/doctor/`).
 const DOCTOR_PREFIX = "/doctor";
 
-function isExempt(pathname: string): boolean {
+// Paths that must always render through so a role-less user can actually reach
+// the gate (and so auth pages work) without a redirect loop. Everything else is
+// subject to the "must have a role" check below — including `/` and `/doctors`.
+function isGatePath(pathname: string): boolean {
   return (
-    pathname === "/" ||
-    pathname.startsWith("/sign-in") ||
-    pathname.startsWith("/sign-up") ||
     pathname === "/role-gate" ||
     pathname === "/post-signin" ||
-    pathname.startsWith("/doctors")
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up")
   );
 }
 
@@ -29,8 +30,8 @@ function isPatientRoute(pathname: string): boolean {
 }
 
 function isDoctorRoute(pathname: string): boolean {
-  // `/doctors*` is already excluded by isExempt(); here `/doctor` only matches
-  // the dashboard surface (`/doctor`, `/doctor/...`).
+  // Only the dashboard surface (`/doctor`, `/doctor/...`) — `/doctors` (the
+  // public directory) is intentionally not matched here.
   return pathname === DOCTOR_PREFIX || pathname.startsWith(`${DOCTOR_PREFIX}/`);
 }
 
@@ -40,9 +41,11 @@ function isDoctorRoute(pathname: string): boolean {
  * wrong-surface user never reaches a screen that would 403.
  */
 function redirectFor(pathname: string, user: ReturnType<typeof useUser>["user"]): string | null {
-  if (isExempt(pathname)) return null;
+  if (isGatePath(pathname)) return null;
 
-  // No synced profile, or role not chosen yet → the one-time role gate.
+  // No synced profile, or role not chosen yet → the one-time role gate. This
+  // now fires on every non-gate path (incl. `/` and `/doctors`), so a role-less
+  // user is bounced no matter where Clerk lands them after sign-in/up.
   if (!user || user.role === null) return "/role-gate";
 
   if (isPatientRoute(pathname) && !hasPatientCapability(user)) {
@@ -69,16 +72,16 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const exempt = isExempt(pathname);
   const target = isSignedIn && !isLoading ? redirectFor(pathname, user) : null;
 
   useEffect(() => {
     if (target) router.replace(target);
   }, [target, router]);
 
-  // Signed-out users and exempt paths render normally; Clerk middleware handles
-  // auth-protection for non-public routes.
-  if (!isSignedIn || exempt) return <>{children}</>;
+  // Signed-out users render normally; Clerk middleware handles auth-protection
+  // for non-public routes. Signed-in users fall through to the resolve/redirect
+  // gate below.
+  if (!isSignedIn) return <>{children}</>;
 
   // Block the protected screen from painting while we resolve the user or
   // while a redirect is pending — this is what prevents the 403 flash.
