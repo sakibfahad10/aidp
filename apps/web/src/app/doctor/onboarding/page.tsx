@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getDoctorProfile, saveDoctorDraft, submitDoctorOnboarding } from "@/lib/api";
 
 type WizardState = {
+  name: string;
   phone: string;
   publicEmail: string;
   bmdcNumber: string;
@@ -35,6 +36,7 @@ type WizardState = {
 };
 
 const EMPTY: WizardState = {
+  name: "",
   phone: "",
   publicEmail: "",
   bmdcNumber: "",
@@ -56,6 +58,7 @@ const STEPS = [
 
 function profileToState(profile: DoctorProfileResponse): WizardState {
   return {
+    name: profile.name ?? "",
     phone: profile.phone ?? "",
     publicEmail: profile.publicEmail ?? "",
     bmdcNumber: profile.bmdcNumber ?? "",
@@ -70,6 +73,7 @@ function profileToState(profile: DoctorProfileResponse): WizardState {
 
 function stateToDraft(state: WizardState): DoctorOnboardingDraft {
   const draft: DoctorOnboardingDraft = {};
+  if (state.name) draft.name = state.name;
   if (state.phone) draft.phone = state.phone;
   if (state.publicEmail) draft.publicEmail = state.publicEmail;
   if (state.bmdcNumber) draft.bmdcNumber = state.bmdcNumber;
@@ -90,6 +94,7 @@ function stateToDraft(state: WizardState): DoctorOnboardingDraft {
 
 function stateToSubmit(state: WizardState): DoctorOnboardingSubmit | null {
   const parsed = doctorOnboardingSubmitSchema.safeParse({
+    name: state.name,
     phone: state.phone,
     publicEmail: state.publicEmail,
     bmdcNumber: state.bmdcNumber,
@@ -106,7 +111,11 @@ function stateToSubmit(state: WizardState): DoctorOnboardingSubmit | null {
 function stepIsValid(state: WizardState, step: number): boolean {
   switch (step) {
     case 0:
-      return state.phone.trim().length >= 7 && /.+@.+\..+/.test(state.publicEmail.trim());
+      return (
+        state.name.trim().length >= 2 &&
+        state.phone.trim().length >= 7 &&
+        /.+@.+\..+/.test(state.publicEmail.trim())
+      );
     case 1:
       return isValidBmdcNumber(state.bmdcNumber) && state.qualifications.trim().length >= 2;
     case 2:
@@ -140,6 +149,7 @@ export default function DoctorOnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -156,11 +166,9 @@ export default function DoctorOnboardingPage() {
         if (cancelled) return;
         const profile = response.data ?? null;
         if (profile) {
-          // Already verified → out of the wizard.
-          if (profile.status === DoctorStatus.VERIFIED) {
-            router.replace("/predict");
-            return;
-          }
+          // Pre-fill the form for everyone — a verified doctor edits their
+          // profile here, a draft doctor resumes the wizard.
+          setVerified(profile.status === DoctorStatus.VERIFIED);
           setState(profileToState(profile));
         }
       } catch (err) {
@@ -221,7 +229,8 @@ export default function DoctorOnboardingPage() {
       if (!response.success) {
         throw new Error(response.error || "Failed to submit");
       }
-      router.replace("/predict");
+      // Submitting verifies the doctor → land on their dashboard.
+      router.replace("/doctor/appointments");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit");
     } finally {
@@ -245,7 +254,15 @@ export default function DoctorOnboardingPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold">
-          Doctor <span className="gradient-text">onboarding</span>
+          {verified ? (
+            <>
+              Edit <span className="gradient-text">profile</span>
+            </>
+          ) : (
+            <>
+              Doctor <span className="gradient-text">onboarding</span>
+            </>
+          )}
         </h1>
         <p className="text-sm text-muted-foreground">
           Step {step + 1} of {STEPS.length} · {currentStep?.title}
@@ -306,7 +323,7 @@ export default function DoctorOnboardingPage() {
             ) : (
               <Check className="h-4 w-4 mr-1" />
             )}
-            Submit & verify
+            {verified ? "Save changes" : "Submit & verify"}
           </Button>
         )}
       </div>
@@ -332,6 +349,16 @@ function ContactStep({
 }) {
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Full name</Label>
+        <Input
+          id="name"
+          placeholder="e.g. Dr. Aminul Karim"
+          value={state.name}
+          onChange={(e) => update({ name: e.target.value })}
+        />
+        <p className="text-xs text-muted-foreground">Shown to patients in the doctor directory.</p>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="phone">Phone</Label>
         <Input
@@ -506,6 +533,7 @@ function ExperienceStep({
 
 function ReviewStep({ state }: { state: WizardState }) {
   const rows: Array<[string, string]> = [
+    ["Name", state.name],
     ["Phone", state.phone],
     ["Public email", state.publicEmail],
     ["BMDC", state.bmdcNumber],
