@@ -42,6 +42,7 @@ export interface DemoUser {
 export interface DemoDoctorProfile {
   id: string;
   userId: string;
+  name: string;
   phone: string;
   publicEmail: string;
   bmdcNumber: string;
@@ -714,6 +715,7 @@ export function buildDemoSeedPlan(anchor: Date): DemoSeedPlan {
     doctorProfiles.push({
       id: doc.profileId,
       userId: doc.userId,
+      name: doc.name,
       phone: doc.phone,
       publicEmail: doc.publicEmail,
       bmdcNumber: doc.bmdcNumber,

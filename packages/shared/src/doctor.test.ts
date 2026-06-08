@@ -158,6 +158,7 @@ describe("doctorOnboardingDraftSchema", () => {
 
 describe("doctorOnboardingSubmitSchema", () => {
   const valid = {
+    name: "Dr. Tanvir Rahman",
     phone: "+8801712345678",
     publicEmail: "dr.public@example.com",
     bmdcNumber: "a-12345",

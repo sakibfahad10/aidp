@@ -24,7 +24,7 @@ type Stored = {
   experienceYears: number | null;
   feeBdt: number | null;
   status: DoctorStatus;
-  userName: string | null;
+  name: string | null;
   openSlots: { id: string; startTime: Date }[];
   createdAt: Date;
   updatedAt: Date;
@@ -38,7 +38,7 @@ function fakeRepo() {
     return {
       id: s.id,
       userId: s.userId,
-      name: s.userName,
+      name: s.name,
       publicEmail: s.publicEmail,
       qualifications: s.qualifications,
       specialties: s.specialties,
@@ -73,7 +73,7 @@ function fakeRepo() {
         experienceYears: patch.experienceYears ?? existing?.experienceYears ?? null,
         feeBdt: patch.feeBdt ?? existing?.feeBdt ?? null,
         status: existing?.status ?? DoctorStatus.DRAFT,
-        userName: existing?.userName ?? null,
+        name: patch.name ?? existing?.name ?? null,
         openSlots: existing?.openSlots ?? [],
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
@@ -93,7 +93,6 @@ function fakeRepo() {
         userId,
         ...body,
         status: DoctorStatus.VERIFIED,
-        userName: existing?.userName ?? null,
         openSlots: existing?.openSlots ?? [],
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
@@ -125,7 +124,7 @@ function fakeRepo() {
         .map((s) => ({
           id: s.id,
           userId: s.userId,
-          name: s.userName,
+          name: s.name,
           specialties: s.specialties,
           affiliation: s.affiliation,
           city: s.city,
@@ -153,7 +152,7 @@ function seed(byUser: Map<string, Stored>, s: Partial<Stored> & { userId: string
     experienceYears: s.experienceYears ?? null,
     feeBdt: s.feeBdt ?? null,
     status: s.status ?? DoctorStatus.VERIFIED,
-    userName: s.userName ?? null,
+    name: s.name ?? null,
     openSlots: s.openSlots ?? [],
     createdAt: now,
     updatedAt: now,
@@ -183,7 +182,7 @@ describe("DoctorService.getByUserId", () => {
       experienceYears: 5,
       feeBdt: 1200,
       status: DoctorStatus.DRAFT,
-      userName: null,
+      name: null,
       openSlots: [],
       createdAt: now,
       updatedAt: now,
@@ -274,6 +273,7 @@ describe("compareForDirectory (has-open-slot then fee asc)", () => {
 
 describe("DoctorService.submit", () => {
   const submission: DoctorOnboardingSubmit = {
+    name: "Dr. Test",
     phone: "+8801712345678",
     publicEmail: "dr@example.com",
     bmdcNumber: "A-12345",
@@ -313,7 +313,7 @@ describe("DoctorService.listDirectory", () => {
       specialties: [Specialty.Cardiology],
       city: City.Dhaka,
       feeBdt: 1500,
-      userName: "Dr. A",
+      name: "Dr. A",
     });
     seed(byUser, {
       id: "2",
@@ -322,7 +322,7 @@ describe("DoctorService.listDirectory", () => {
       city: City.Dhaka,
       feeBdt: 800,
       status: DoctorStatus.DRAFT,
-      userName: "Dr. B (draft)",
+      name: "Dr. B (draft)",
     });
     const svc = new DoctorService(repo);
     const list = await svc.listDirectory({});
@@ -463,7 +463,7 @@ describe("DoctorService.getPublicProfile", () => {
       experienceYears: 10,
       feeBdt: 1500,
       publicEmail: "dr@example.com",
-      userName: "Dr. Alice",
+      name: "Dr. Alice",
     });
     const svc = new DoctorService(repo);
     const profile = await svc.getPublicProfile("doc_1");

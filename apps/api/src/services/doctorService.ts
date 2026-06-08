@@ -32,6 +32,7 @@ function toResponse(row: NonNullable<DoctorProfileRow>): DoctorProfileResponse {
   return {
     id: row.id,
     userId: row.userId,
+    name: row.name,
     phone: row.phone,
     publicEmail: row.publicEmail,
     bmdcNumber: row.bmdcNumber,

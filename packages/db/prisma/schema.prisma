@@ -132,6 +132,7 @@ model DoctorProfile {
   id              String             @id @default(uuid())
   userId          String             @unique
   user            User               @relation(fields: [userId], references: [id])
+  name            String?
   phone           String?
   publicEmail     String?
   bmdcNumber      String?            @unique

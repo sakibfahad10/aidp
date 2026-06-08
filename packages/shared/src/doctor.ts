@@ -91,6 +91,8 @@ export const bmdcNumberSchema = z
     message: "BMDC number must be 3–7 digits, optionally prefixed by A or B (e.g. A-12345, 12345)",
   });
 
+const nameSchema = z.string().trim().min(2, "Name is required").max(120, "Name is too long");
+
 const phoneSchema = z
   .string()
   .min(7, "Phone number is too short")
@@ -127,6 +129,7 @@ const specialtiesSchema = z.array(specialtySchema).min(1, "Pick at least one spe
  * can't drift into invalid state mid-wizard.
  */
 export const doctorOnboardingDraftSchema = z.object({
+  name: nameSchema.optional(),
   phone: phoneSchema.optional(),
   publicEmail: z.string().email("Enter a valid email").optional(),
   bmdcNumber: bmdcNumberSchema.optional(),
@@ -146,6 +149,7 @@ export type DoctorOnboardingDraft = z.infer<typeof doctorOnboardingDraftSchema>;
  * step in the MVP).
  */
 export const doctorOnboardingSubmitSchema = z.object({
+  name: nameSchema,
   phone: phoneSchema,
   publicEmail: z.string().email("Enter a valid email"),
   bmdcNumber: bmdcNumberSchema,
@@ -167,6 +171,7 @@ export type DoctorOnboardingSubmit = z.infer<typeof doctorOnboardingSubmitSchema
 export interface DoctorProfileResponse {
   id: string;
   userId: string;
+  name: string | null;
   phone: string | null;
   publicEmail: string | null;
   bmdcNumber: string | null;
@@ -196,9 +201,9 @@ export const directoryQuerySchema = z.object({
 export type DirectoryQuery = z.infer<typeof directoryQuerySchema>;
 
 /**
- * One row of the public doctor directory. `name` is the doctor's `User.name`
- * (may be null if the user hasn't set one); `userId` is intentionally
- * present so the row can link to the public profile page.
+ * One row of the public doctor directory. `name` is the doctor's
+ * `DoctorProfile.name` (may be null if not set during onboarding); `userId` is
+ * intentionally present so the row can link to the public profile page.
  *
  * Only verified doctors appear here — no login email, no draft fields, no
  * BMDC number. Just what a patient needs to decide whether to look closer.

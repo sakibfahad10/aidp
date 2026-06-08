@@ -60,6 +60,7 @@ async function main(): Promise<void> {
     await prisma.doctorProfile.upsert({
       where: { userId: d.userId },
       update: {
+        name: d.name,
         phone: d.phone,
         publicEmail: d.publicEmail,
         bmdcNumber: d.bmdcNumber,
@@ -74,6 +75,7 @@ async function main(): Promise<void> {
       create: {
         id: d.id,
         userId: d.userId,
+        name: d.name,
         phone: d.phone,
         publicEmail: d.publicEmail,
         bmdcNumber: d.bmdcNumber,
