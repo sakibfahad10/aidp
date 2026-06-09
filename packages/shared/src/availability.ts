@@ -44,3 +44,21 @@ export interface ToggleAvailabilitySlotResult {
   action: "created" | "removed";
   slot: AvailabilitySlot | null;
 }
+
+const slotTimestamp = z
+  .string()
+  .datetime({ offset: true, message: "startTime must be a valid ISO 8601 timestamp" });
+
+/**
+ * Body of POST /api/v1/doctors/me/availability/bulk — backs the editor's preset
+ * and per-day "fill" actions. `open` ISO timestamps materialize fresh `open`
+ * rows (already-open or `booked` moments are skipped, never disturbed); `close`
+ * timestamps remove still-`open` rows (booked or missing are left alone). One
+ * atomic request replaces dozens of single-cell toggles.
+ */
+export const bulkAvailabilityRequestSchema = z.object({
+  open: z.array(slotTimestamp).max(200),
+  close: z.array(slotTimestamp).max(200),
+});
+
+export type BulkAvailabilityRequest = z.infer<typeof bulkAvailabilityRequestSchema>;

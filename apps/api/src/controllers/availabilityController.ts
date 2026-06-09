@@ -1,5 +1,8 @@
 import { getAuth } from "@clerk/express";
-import type { ToggleAvailabilitySlotRequest } from "@disease-prediction/shared";
+import type {
+  BulkAvailabilityRequest,
+  ToggleAvailabilitySlotRequest,
+} from "@disease-prediction/shared";
 import type { NextFunction, Request, Response } from "express";
 import { AvailabilityService } from "../services/availabilityService";
 
@@ -36,6 +39,26 @@ export class AvailabilityController {
         data: result,
         message: result.action === "created" ? "Slot opened" : "Slot removed",
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Bulk apply — opens/closes many slots in one atomic request (presets, per-day fill). */
+  static async bulkSet(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const body = req.body as BulkAvailabilityRequest;
+      const slots = await availabilityService.bulkSet(
+        userId,
+        body.open.map((t) => new Date(t)),
+        body.close.map((t) => new Date(t)),
+      );
+      res.json({ success: true, data: slots });
     } catch (error) {
       next(error);
     }

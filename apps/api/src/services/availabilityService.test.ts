@@ -68,6 +68,30 @@ function fakeRepo(): {
         )
         .sort((a, b) => a.startTime.getTime() - b.startTime.getTime()),
     ),
+    bulkApply: vi.fn(async (doctorId: string, openTimes: Date[], closeTimes: Date[]) => {
+      // create-if-absent (skip already-open/booked), then delete-if-open.
+      for (const startTime of openTimes) {
+        const k = key(doctorId, startTime);
+        if (store.has(k)) continue;
+        const now = new Date();
+        store.set(k, {
+          id: `slot_${nextId++}`,
+          doctorId,
+          startTime,
+          status: SlotStatus.OPEN,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      for (const startTime of closeTimes) {
+        const k = key(doctorId, startTime);
+        const row = store.get(k);
+        if (row && row.status === SlotStatus.OPEN) store.delete(k);
+      }
+      return Array.from(store.values())
+        .filter((s) => s.doctorId === doctorId && s.status === SlotStatus.OPEN)
+        .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    }),
   };
   return { repo, store };
 }
@@ -144,5 +168,72 @@ describe("AvailabilityService.listOpenForDoctor", () => {
     stored.status = SlotStatus.BOOKED;
 
     expect(await svc.listOpenForDoctor(DOCTOR_ID)).toEqual([]);
+  });
+});
+
+describe("AvailabilityService.bulkSet", () => {
+  const t = (iso: string) => new Date(iso);
+  const A = t("2026-06-15T09:00:00.000Z");
+  const B = t("2026-06-15T10:00:00.000Z");
+  const C = t("2026-06-15T11:00:00.000Z");
+
+  it("opens all missing moments and returns them sorted", async () => {
+    const { repo } = fakeRepo();
+    const svc = new AvailabilityService(repo);
+
+    const slots = await svc.bulkSet(USER_ID, [B, A, C], []);
+    expect(slots.map((s) => s.startTime)).toEqual([
+      A.toISOString(),
+      B.toISOString(),
+      C.toISOString(),
+    ]);
+    for (const s of slots) expect(s.status).toBe(SlotStatus.OPEN);
+  });
+
+  it("skips already-open and booked moments on open, never duplicating or disturbing them", async () => {
+    const { repo, store } = fakeRepo();
+    const svc = new AvailabilityService(repo);
+    await svc.bulkSet(USER_ID, [A], []); // A already open
+    const a = Array.from(store.values()).find((s) => s.startTime.getTime() === A.getTime());
+    if (!a) throw new Error("expected slot A");
+    // make B booked
+    await svc.bulkSet(USER_ID, [B], []);
+    const b = Array.from(store.values()).find((s) => s.startTime.getTime() === B.getTime());
+    if (!b) throw new Error("expected slot B");
+    b.status = SlotStatus.BOOKED;
+
+    await svc.bulkSet(USER_ID, [A, B, C], []);
+    expect(store.size).toBe(3); // A (still its original row), B (booked), C (new)
+    expect(Array.from(store.values()).find((s) => s.id === a.id)).toBeTruthy();
+    expect(b.status).toBe(SlotStatus.BOOKED);
+  });
+
+  it("closes still-open moments and leaves booked / missing untouched", async () => {
+    const { repo, store } = fakeRepo();
+    const svc = new AvailabilityService(repo);
+    await svc.bulkSet(USER_ID, [A, B], []);
+    const b = Array.from(store.values()).find((s) => s.startTime.getTime() === B.getTime());
+    if (!b) throw new Error("expected slot B");
+    b.status = SlotStatus.BOOKED;
+
+    // Close A (open), B (booked → kept), C (missing → no-op).
+    const remaining = await svc.bulkSet(USER_ID, [], [A, B, C]);
+    expect(remaining).toEqual([]); // only B remains and it's booked, not open
+    expect(store.size).toBe(1);
+    expect(Array.from(store.values())[0]?.status).toBe(SlotStatus.BOOKED);
+  });
+
+  it("applies opens and closes together in one call", async () => {
+    const { repo } = fakeRepo();
+    const svc = new AvailabilityService(repo);
+    await svc.bulkSet(USER_ID, [A, B], []);
+    const slots = await svc.bulkSet(USER_ID, [C], [A]);
+    expect(slots.map((s) => s.startTime)).toEqual([B.toISOString(), C.toISOString()]);
+  });
+
+  it("rejects when the user has no doctor profile", async () => {
+    const { repo } = fakeRepo();
+    const svc = new AvailabilityService(repo);
+    await expect(svc.bulkSet("user_patient", [A], [])).rejects.toMatchObject({ statusCode: 403 });
   });
 });

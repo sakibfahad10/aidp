@@ -82,6 +82,34 @@ export class AvailabilityRepository {
     });
     return rows.map(toRow);
   }
+
+  /**
+   * Apply a batch of opens and closes atomically, returning the doctor's
+   * resulting open slots. `createMany({ skipDuplicates })` leans on the
+   * `@@unique([doctorId, startTime])` constraint so already-open and `booked`
+   * moments are skipped, never re-created; the delete only removes still-`open`
+   * rows, so booked and missing times are left untouched.
+   */
+  async bulkApply(
+    doctorId: string,
+    openTimes: Date[],
+    closeTimes: Date[],
+  ): Promise<AvailabilitySlotRow[]> {
+    await prisma.$transaction([
+      prisma.availabilitySlot.createMany({
+        data: openTimes.map((startTime) => ({
+          doctorId,
+          startTime,
+          status: "open" as PrismaSlotStatus,
+        })),
+        skipDuplicates: true,
+      }),
+      prisma.availabilitySlot.deleteMany({
+        where: { doctorId, startTime: { in: closeTimes }, status: "open" as PrismaSlotStatus },
+      }),
+    ]);
+    return this.listOpenByDoctorId(doctorId);
+  }
 }
 
 export interface AvailabilityRepositoryLike {
@@ -92,4 +120,9 @@ export interface AvailabilityRepositoryLike {
   deleteById(id: string): Promise<void>;
   listOpenByDoctorId(doctorId: string): Promise<AvailabilitySlotRow[]>;
   listByDoctorIdInRange(doctorId: string, from: Date, to: Date): Promise<AvailabilitySlotRow[]>;
+  bulkApply(
+    doctorId: string,
+    openTimes: Date[],
+    closeTimes: Date[],
+  ): Promise<AvailabilitySlotRow[]>;
 }

@@ -61,6 +61,17 @@ export class AvailabilityService {
     return rows.map(toWire);
   }
 
+  /**
+   * Apply the editor's preset / per-day "fill" actions in one atomic batch:
+   * open the given moments (skipping any already-open or `booked`) and remove
+   * the given still-`open` moments. Returns the resulting open slots.
+   */
+  async bulkSet(userId: string, open: Date[], close: Date[]): Promise<AvailabilitySlot[]> {
+    const doctorId = await this.requireDoctorId(userId);
+    const rows = await this.repo.bulkApply(doctorId, open, close);
+    return rows.map(toWire);
+  }
+
   /** All slots in a date range — backs the editor's week view. */
   async listOwnInRange(userId: string, from: Date, to: Date): Promise<AvailabilitySlot[]> {
     const doctorId = await this.requireDoctorId(userId);
