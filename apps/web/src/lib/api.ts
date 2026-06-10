@@ -204,6 +204,18 @@ export async function toggleAvailabilitySlot(
   );
 }
 
+export async function setBulkAvailability(
+  open: string[],
+  close: string[],
+  token: string | null,
+): Promise<ApiResponse<AvailabilitySlot[]>> {
+  return fetchApi<ApiResponse<AvailabilitySlot[]>>("/api/v1/doctors/me/availability/bulk", {
+    method: "POST",
+    body: JSON.stringify({ open, close }),
+    token,
+  });
+}
+
 export async function getHealthProfile(token: string | null): Promise<ApiResponse<HealthProfile>> {
   return fetchApi<ApiResponse<HealthProfile>>("/api/v1/health-profile", { token });
 }

@@ -7,24 +7,21 @@ import { AlertCircle, CalendarDays, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getOwnAvailability, toggleAvailabilitySlot } from "@/lib/api";
+import { getOwnAvailability, setBulkAvailability, toggleAvailabilitySlot } from "@/lib/api";
 
 const HOURS = Array.from({ length: 10 }, (_, i) => 9 + i); // 09:00 – 18:00
 const DAYS = 7;
 
-function startOfWeekUtc(reference: Date): Date {
-  const d = new Date(
+// Grid starts at today (UTC midnight) and runs forward — a rolling window of
+// current/future days, so the doctor never sets availability on past dates.
+function startOfTodayUtc(reference: Date): Date {
+  return new Date(
     Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate()),
   );
-  // Monday = 1 ... Sunday = 0 ; align week start to Monday for clinic-style grid.
-  const day = d.getUTCDay();
-  const diff = (day + 6) % 7;
-  d.setUTCDate(d.getUTCDate() - diff);
-  return d;
 }
 
-function cellTime(weekStart: Date, dayOffset: number, hour: number): Date {
-  const t = new Date(weekStart);
+function cellTime(gridStart: Date, dayOffset: number, hour: number): Date {
+  const t = new Date(gridStart);
   t.setUTCDate(t.getUTCDate() + dayOffset);
   t.setUTCHours(hour, 0, 0, 0);
   return t;
@@ -93,8 +90,9 @@ export default function DoctorAvailabilityPage() {
   const [slots, setSlots] = useState<Map<string, AvailabilitySlot>>(new Map());
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [weekStart] = useState<Date>(() => startOfWeekUtc(new Date()));
+  const [gridStart] = useState<Date>(() => startOfTodayUtc(new Date()));
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -120,11 +118,11 @@ export default function DoctorAvailabilityPage() {
   const days = useMemo(
     () =>
       Array.from({ length: DAYS }, (_, i) => {
-        const d = new Date(weekStart);
+        const d = new Date(gridStart);
         d.setUTCDate(d.getUTCDate() + i);
         return d;
       }),
-    [weekStart],
+    [gridStart],
   );
 
   async function onToggleCell(time: Date) {
@@ -154,6 +152,70 @@ export default function DoctorAvailabilityPage() {
       });
     }
   }
+
+  // Collect the cell times across the week whose current state matches `want`
+  // and whose (dayOffset, hour) satisfies `match` — used to compute the delta
+  // for a preset or per-day action without touching booked cells.
+  function collectCells(
+    want: CellState,
+    match: (dayOffset: number, hour: number) => boolean,
+  ): Date[] {
+    const out: Date[] = [];
+    for (let dayOffset = 0; dayOffset < DAYS; dayOffset++) {
+      for (const hour of HOURS) {
+        if (!match(dayOffset, hour)) continue;
+        const time = cellTime(gridStart, dayOffset, hour);
+        if (cellStateFor(slots.get(isoKey(time))) === want) out.push(time);
+      }
+    }
+    return out;
+  }
+
+  // Apply a batch of opens/closes in one request, then rebuild from the result.
+  async function applyBulk(openTimes: Date[], closeTimes: Date[]) {
+    if (busy || (openTimes.length === 0 && closeTimes.length === 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const res = await setBulkAvailability(
+        openTimes.map((t) => t.toISOString()),
+        closeTimes.map((t) => t.toISOString()),
+        token,
+      );
+      const next = new Map<string, AvailabilitySlot>();
+      for (const slot of res.data ?? []) next.set(isoKey(new Date(slot.startTime)), slot);
+      setSlots(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update availability");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Presets open every still-free cell in their window (booked/already-open are
+  // left as-is); "Clear week" closes every still-open cell.
+  const openPreset = (match: (dayOffset: number, hour: number) => boolean) =>
+    applyBulk(collectCells("free", match), []);
+  const clearWeek = () =>
+    applyBulk(
+      [],
+      collectCells("open", () => true),
+    );
+  const openDay = (dayOffset: number) =>
+    applyBulk(
+      collectCells("free", (d) => d === dayOffset),
+      [],
+    );
+  const clearDay = (dayOffset: number) =>
+    applyBulk(
+      [],
+      collectCells("open", (d) => d === dayOffset),
+    );
+
+  // Mon–Fri are dayOffsets 0–4 (week starts Monday); 9–5 = start times 09:00–16:00.
+  const isWeekday = (dayOffset: number) => dayOffset <= 4;
+  const controlsDisabled = loading || busy;
 
   if (!isLoaded) {
     return (
@@ -186,8 +248,8 @@ export default function DoctorAvailabilityPage() {
                 <CalendarDays className="h-5 w-5" /> Availability
               </CardTitle>
               <CardDescription>
-                Toggle a cell to open a bookable slot; toggle again to remove it. Booked slots are
-                locked.
+                Use a quick-fill preset or a day's Open/Clear to set many slots at once, or toggle a
+                single cell. Booked slots are locked.
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
@@ -202,17 +264,72 @@ export default function DoctorAvailabilityPage() {
             </div>
           )}
 
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium text-muted-foreground">Quick fill:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={controlsDisabled}
+              onClick={() => void openPreset((d, h) => isWeekday(d) && h >= 9 && h <= 16)}
+            >
+              Weekdays 9–5
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={controlsDisabled}
+              onClick={() => void openPreset((_, h) => h >= 9 && h <= 11)}
+            >
+              Mornings (9–12)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={controlsDisabled}
+              onClick={() => void openPreset((_, h) => h >= 13 && h <= 16)}
+            >
+              Afternoons (1–5)
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={controlsDisabled}
+              onClick={() => void clearWeek()}
+            >
+              Clear week
+            </Button>
+            {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-1 text-sm">
               <thead>
                 <tr>
                   <th className="w-16 text-left text-xs font-medium text-muted-foreground">Time</th>
-                  {days.map((day) => (
+                  {days.map((day, dayOffset) => (
                     <th
                       key={day.toISOString()}
                       className="px-2 py-1 text-center text-xs font-medium text-muted-foreground"
                     >
-                      {formatDayHeader(day)}
+                      <div>{formatDayHeader(day)}</div>
+                      <div className="mt-1 flex justify-center gap-1">
+                        <button
+                          type="button"
+                          disabled={controlsDisabled}
+                          onClick={() => void openDay(dayOffset)}
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          disabled={controlsDisabled}
+                          onClick={() => void clearDay(dayOffset)}
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -222,7 +339,7 @@ export default function DoctorAvailabilityPage() {
                   <tr key={hour}>
                     <td className="text-xs text-muted-foreground">{formatHour(hour)}</td>
                     {days.map((_, dayOffset) => {
-                      const time = cellTime(weekStart, dayOffset, hour);
+                      const time = cellTime(gridStart, dayOffset, hour);
                       const key = isoKey(time);
                       const slot = slots.get(key);
                       const cellState = cellStateFor(slot);
