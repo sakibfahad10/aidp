@@ -77,6 +77,7 @@ export class DoctorRepository {
    * contains-match on free-text.
    */
   async findVerifiedDirectory(query: DirectoryQuery): Promise<PublicDoctorRow[]> {
+    const now = new Date();
     const rows = await prisma.doctorProfile.findMany({
       where: {
         status: "verified" as PrismaDoctorStatus,
@@ -89,9 +90,10 @@ export class DoctorRepository {
           : {}),
       },
       include: {
-        user: { select: { name: true } },
         slots: {
-          where: { status: "open" },
+          // Only still-bookable (future) slots — past slots must never surface
+          // for booking or drive the has-open-slot ordering.
+          where: { status: "open", startTime: { gte: now } },
           orderBy: { startTime: "asc" },
           select: { id: true, startTime: true },
         },
@@ -109,17 +111,22 @@ export class DoctorRepository {
    * never considered as suggestions.
    */
   async findVerifiedForSuggestions(): Promise<SuggestionCandidate[]> {
+    const now = new Date();
     const rows = await prisma.doctorProfile.findMany({
       where: { status: "verified" as PrismaDoctorStatus },
       include: {
-        user: { select: { name: true } },
-        slots: { where: { status: "open" }, select: { id: true }, take: 1 },
+        // has-open-slot probe counts only future slots.
+        slots: {
+          where: { status: "open", startTime: { gte: now } },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
     return rows.map((row) => ({
       id: row.id,
       userId: row.userId,
-      name: row.user.name,
+      name: row.name,
       specialties: row.specialties as unknown as Specialty[],
       affiliation: row.affiliation,
       city: row.city as unknown as City | null,
@@ -135,12 +142,13 @@ export class DoctorRepository {
    * such doctor" — non-verified profiles never leak.
    */
   async findPublicById(id: string): Promise<PublicDoctorRow | null> {
+    const now = new Date();
     const row = await prisma.doctorProfile.findFirst({
       where: { id, status: "verified" as PrismaDoctorStatus },
       include: {
-        user: { select: { name: true } },
         slots: {
-          where: { status: "open" },
+          // Booking picker shows only upcoming slots — never past times.
+          where: { status: "open", startTime: { gte: now } },
           orderBy: { startTime: "asc" },
           select: { id: true, startTime: true },
         },
@@ -155,6 +163,7 @@ export class DoctorRepository {
 // semantics the wizard relies on.
 function toPrismaPatch(patch: Partial<DoctorOnboardingSubmit>) {
   return {
+    name: patch.name,
     phone: patch.phone,
     publicEmail: patch.publicEmail,
     bmdcNumber: patch.bmdcNumber,
@@ -181,6 +190,7 @@ export type DoctorRepositoryLike = {
 function toPublicRow(row: {
   id: string;
   userId: string;
+  name: string | null;
   publicEmail: string | null;
   qualifications: string | null;
   specialties: PrismaSpecialty[];
@@ -188,13 +198,12 @@ function toPublicRow(row: {
   city: PrismaCity | null;
   experienceYears: number | null;
   feeBdt: number | null;
-  user: { name: string | null };
   slots: { id: string; startTime: Date }[];
 }): PublicDoctorRow {
   return {
     id: row.id,
     userId: row.userId,
-    name: row.user.name,
+    name: row.name,
     publicEmail: row.publicEmail,
     qualifications: row.qualifications,
     specialties: row.specialties as unknown as Specialty[],
