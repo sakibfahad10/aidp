@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   Brain,
   CalendarCheck,
+  CalendarDays,
   History,
   LogIn,
   Stethoscope,
@@ -14,7 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { enablePatientCapability } from "@/lib/api";
@@ -24,6 +25,13 @@ import { cn } from "@/lib/utils";
 type NavContext = "patient" | "doctor";
 
 const NAV_CONTEXT_KEY = "medpredict.navContext";
+
+// Where each context lands when the user switches into it — the primary surface
+// for that role (doctor "Dashboard" is the appointments view, not the profile).
+const CONTEXT_HOME: Record<NavContext, string> = {
+  patient: "/predict",
+  doctor: "/doctor/appointments",
+};
 
 function readPersistedContext(): NavContext | null {
   if (typeof window === "undefined") return null;
@@ -38,8 +46,8 @@ function writePersistedContext(value: NavContext) {
 
 const homeItem = { href: "/", label: "Home", icon: Activity };
 
-// Public doctor directory — visible to everyone (signed in or not) so a
-// patient can browse verified doctors without an auth wall.
+// Doctor directory — a patient-facing surface for browsing/booking verified
+// doctors. Shown only in the patient menu; `/doctors` itself requires auth.
 const directoryItem = { href: "/doctors", label: "Doctors", icon: Stethoscope };
 
 const patientItems = [
@@ -49,15 +57,17 @@ const patientItems = [
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
-// Doctor surface is currently the onboarding/dashboard-stub page; later
-// PRD #9 slices replace this with a proper dashboard route.
+// Doctor surface: the appointments view is the dashboard; onboarding doubles
+// as the editable profile once verified.
 const doctorItems = [
-  { href: "/doctor/onboarding", label: "Dashboard", icon: Stethoscope },
-  { href: "/doctor/appointments", label: "Appointments", icon: CalendarCheck },
+  { href: "/doctor/appointments", label: "Dashboard", icon: CalendarCheck },
+  { href: "/doctor/availability", label: "Availability", icon: CalendarDays },
+  { href: "/doctor/onboarding", label: "Profile", icon: Stethoscope },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isSignedIn, getToken } = useAuth();
   const { user, setUser } = useUser();
   const [context, setContextState] = useState<NavContext>("patient");
@@ -81,6 +91,14 @@ export function Navbar() {
     writePersistedContext(next);
   }, []);
 
+  // Switching context also navigates to that role's home — otherwise the nav
+  // links swap but the user is left stranded on the previous role's page.
+  const switchContext = useCallback(() => {
+    const next: NavContext = context === "patient" ? "doctor" : "patient";
+    setContext(next);
+    router.push(CONTEXT_HOME[next]);
+  }, [context, setContext, router]);
+
   const handleRegisterAsPatient = useCallback(async () => {
     setRegistering(true);
     try {
@@ -88,25 +106,30 @@ export function Navbar() {
       const res = await enablePatientCapability(token);
       if (res.success && res.data) {
         setUser(res.data);
-        // Drop the new patient capability straight into patient context so the
-        // user sees Predict/History/Profile appear immediately.
+        // Drop the new patient capability straight into patient context and take
+        // the user to the patient surface they just unlocked.
         setContext("patient");
+        router.push(CONTEXT_HOME.patient);
       }
     } finally {
       setRegistering(false);
     }
-  }, [getToken, setContext, setUser]);
+  }, [getToken, setContext, setUser, router]);
 
   const dualRole = user ? isDualRoleUser(user) : false;
   const canRegisterAsPatient = !!user && user.role === Role.DOCTOR && !user.patientCapability;
 
   let navItems: { href: string; label: string; icon: typeof Activity }[];
-  if (!isSignedIn || !user) {
-    navItems = [homeItem, directoryItem];
+  if (!isSignedIn || !user || user.role === null) {
+    // Signed-out, unsynced, or role not chosen yet → neutral menu only. The
+    // role gate bounces role-less users away; this also kills a patient-menu
+    // flash before that redirect lands.
+    navItems = [homeItem];
   } else if (user.role === Role.DOCTOR && (context === "doctor" || !user.patientCapability)) {
-    navItems = [homeItem, directoryItem, ...doctorItems];
+    navItems = [homeItem, ...doctorItems];
   } else {
-    // PATIENT primary role, or DOCTOR currently in patient context.
+    // PATIENT primary role, or DOCTOR currently in patient context — the only
+    // surface that gets the patient-facing doctor directory.
     navItems = [homeItem, directoryItem, ...patientItems];
   }
 
@@ -145,12 +168,7 @@ export function Navbar() {
           })}
 
           {dualRole ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2"
-              onClick={() => setContext(context === "patient" ? "doctor" : "patient")}
-            >
+            <Button variant="ghost" size="sm" className="gap-2" onClick={switchContext}>
               <ArrowLeftRight className="h-4 w-4" />
               <span className="hidden sm:inline">
                 Switch to {context === "patient" ? "Doctor" : "Patient"}
