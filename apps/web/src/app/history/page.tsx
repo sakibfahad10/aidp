@@ -131,44 +131,46 @@ export default function HistoryPage() {
                 result?.riskLevel || (prediction as LegacyPredictionFields).riskLevel || "low";
 
               return (
-                <Card
-                  key={prediction.id}
-                  className="glass-hover cursor-pointer group"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardContent className="p-4 flex items-center gap-4">
-                    {/* Risk Badge */}
-                    <Badge
-                      variant={
-                        riskBadgeVariant[riskLevel as keyof typeof riskBadgeVariant] || "default"
-                      }
-                      className="flex-shrink-0"
-                    >
-                      {riskLevel}
-                    </Badge>
+                <Link key={prediction.id} href={`/history/${prediction.id}`} className="block">
+                  <Card
+                    className="glass-hover cursor-pointer group"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <CardContent className="p-4 flex items-center gap-4">
+                      {/* Risk Badge */}
+                      <Badge
+                        variant={
+                          riskBadgeVariant[riskLevel as keyof typeof riskBadgeVariant] || "default"
+                        }
+                        className="flex-shrink-0"
+                      >
+                        {riskLevel}
+                      </Badge>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-primary font-medium uppercase tracking-wider">
-                          {inputTypeLabels[prediction.inputType as keyof typeof inputTypeLabels] ||
-                            "Unknown"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(prediction.createdAt)}
-                        </span>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-primary font-medium uppercase tracking-wider">
+                            {inputTypeLabels[
+                              prediction.inputType as keyof typeof inputTypeLabels
+                            ] || "Unknown"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(prediction.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground truncate">
+                          {result?.summary ||
+                            (prediction as LegacyPredictionFields).summary ||
+                            "Prediction result"}
+                        </p>
                       </div>
-                      <p className="text-sm text-foreground truncate">
-                        {result?.summary ||
-                          (prediction as LegacyPredictionFields).summary ||
-                          "Prediction result"}
-                      </p>
-                    </div>
 
-                    {/* Arrow */}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                  </CardContent>
-                </Card>
+                      {/* Arrow */}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    </CardContent>
+                  </Card>
+                </Link>
               );
             })}
           </div>
