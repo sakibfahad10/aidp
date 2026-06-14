@@ -22,6 +22,7 @@
     "check:fix": "biome check --write .",
     "typecheck": "pnpm -r exec tsc --noEmit",
     "test": "pnpm -r --if-present test",
+    "test:e2e": "python3 -m pytest tests/selenium -v",
     "clean": "pnpm -r clean",
     "sandcastle": "tsx .sandcastle/main.mts",
     "sandcastle:build-image": "sandcastle docker build-image"
