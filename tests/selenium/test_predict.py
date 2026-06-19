@@ -1,13 +1,18 @@
-"""Minimal Selenium happy-path test for the AI Prediction feature.
+"""Selenium happy-path test for the AI Prediction + appointment booking flow.
 
 Flow: open /predict (redirects to Clerk sign-in) -> sign in via Clerk test mode
 -> land on /predict as a Patient (handling the /role-gate fallback) -> submit the
-Symptoms form -> assert the prediction result card renders.
+Symptoms form -> assert the prediction result card renders -> follow a suggested
+doctor (or the directory if Gemini recommended an unseeded specialty) -> book a
+random open slot -> open /appointments and assert the booking shows under Upcoming.
 
-Assertion is intentionally tolerant of Gemini's non-deterministic output: it only
-checks that the result card appears, not its contents.
+Assertions are tolerant of Gemini's non-deterministic output: they check that the
+result card and a doctor suggestion path exist, not the specific predicted content.
+Requires the demo seed (`pnpm db:seed`) so doctors have open future slots.
 """
 
+import random
+import re
 import time
 
 from selenium.common.exceptions import (
@@ -23,6 +28,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 # Clerk test-mode one-time code. Works for any *+clerk_test* identifier when the
 # instance is in development/test mode.
 CLERK_TEST_OTP = "424242"
+
+# Open-slot / appointment buttons render their time via toLocaleString, e.g.
+# "Tue, Jun 15, 10:00 AM" — both the doctor page and the appointments card use
+# the SAME format, so a captured slot string matches across pages.
+SLOT_RE = re.compile(r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun),")
 
 SHORT = 10  # seconds — UI interactions
 AUTH = 12  # seconds — waiting for the post-sign-in redirect off /sign-in
@@ -232,7 +242,104 @@ def _reach_predict(driver, base_url):
         _wait(driver, NAV).until(EC.url_contains("/predict"))
 
 
-def test_symptom_prediction_renders_result_card(
+def _suggested_doctor_links(driver, timeout=8):
+    # The result card loads "Suggested Doctors" via a separate async fetch, so
+    # give it a moment. Returns [] if Gemini recommended an unseeded specialty.
+    try:
+        return _wait(driver, timeout).until(
+            lambda d: d.find_elements(By.CSS_SELECTOR, "a[href^='/doctors?specialty=']")
+            or False
+        )
+    except TimeoutException:
+        return []
+
+
+def _collect_doctor_hrefs(driver):
+    _wait(driver, NAV).until(
+        lambda d: d.find_elements(By.CSS_SELECTOR, "a[href^='/doctors/']")
+    )
+    hrefs = [
+        a.get_attribute("href")
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href^='/doctors/']")
+    ]
+    random.shuffle(hrefs)  # spread bookings across doctors to avoid slot exhaustion
+    return hrefs
+
+
+def _open_slot_buttons(driver):
+    # Wait until the booking card settles (slot grid, or a no-slots message),
+    # then return the slot buttons (those whose label is a formatted date/time).
+    try:
+        _wait(driver, SHORT).until(
+            lambda d: d.find_elements(
+                By.XPATH, "//button[normalize-space()='Book selected slot']"
+            )
+            or d.find_elements(By.XPATH, "//*[contains(text(), 'No open slots')]")
+        )
+    except TimeoutException:
+        return []
+    return [
+        b
+        for b in driver.find_elements(By.CSS_SELECTOR, "button[type='button']")
+        if SLOT_RE.match(b.text.strip())
+    ]
+
+
+def _try_book_from(driver, hrefs):
+    # Visit doctors until one has an open slot; book a random slot there.
+    for href in hrefs:
+        driver.get(href)
+        slots = _open_slot_buttons(driver)
+        if not slots:
+            continue
+        slot = random.choice(slots)
+        slot_text = slot.text.strip()
+        slot.click()
+        _wait(driver).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, "//button[normalize-space()='Book selected slot']")
+            )
+        ).click()
+        _wait(driver, NAV).until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//*[contains(text(), 'Appointment booked.')]")
+            )
+        )
+        return slot_text
+    return None
+
+
+def _book_via_suggested_doctor(driver, base_url):
+    # Prefer the prediction's suggested-doctor deep link; fall back to the full
+    # directory if no suggestion appeared or its doctors had no open slots.
+    links = _suggested_doctor_links(driver)
+    if links:
+        links[0].click()
+        _wait(driver, NAV).until(EC.url_contains("/doctors"))
+        booked = _try_book_from(driver, _collect_doctor_hrefs(driver))
+        if booked:
+            return booked
+    driver.get(f"{base_url}/doctors")
+    booked = _try_book_from(driver, _collect_doctor_hrefs(driver))
+    assert booked, (
+        "No demo doctor had an open slot to book — run `pnpm db:seed` to refresh "
+        "demo availability."
+    )
+    return booked
+
+
+def _verify_upcoming_appointment(driver, base_url, slot_text):
+    driver.get(f"{base_url}/appointments")
+    _wait(driver, NAV).until(
+        EC.presence_of_element_located((By.XPATH, "//h2[normalize-space()='Upcoming']"))
+    )
+    # The just-booked slot must show under Upcoming (same toLocaleString format).
+    assert _present(
+        driver, By.XPATH, f'//*[contains(text(), "{slot_text}")]', timeout=NAV
+    ), f"Booked slot '{slot_text}' is not shown on the appointments page."
+
+
+def test_prediction_to_appointment_booking(
     driver, base_url, test_email, test_password
 ):
     _sign_in(driver, base_url, test_email, test_password)
@@ -268,6 +375,11 @@ def test_symptom_prediction_renders_result_card(
         "Loading skeletons still present after the result rendered."
     )
 
-    # Visual hold so the result card is observable before the browser quits
-    # (handy when watching with HEADLESS=0); not a functional wait.
+    # Follow a suggested doctor, book a random open slot, then confirm it shows
+    # up as an upcoming appointment.
+    booked_slot = _book_via_suggested_doctor(driver, base_url)
+    _verify_upcoming_appointment(driver, base_url, booked_slot)
+
+    # Visual hold so the appointments page is observable before the browser
+    # quits (handy when watching with HEADLESS=0); not a functional wait.
     time.sleep(5)
